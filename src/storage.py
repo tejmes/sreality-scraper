@@ -4,18 +4,20 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 from datetime import datetime
 
-DB_PATH = Path("data/estates.sqlite3")
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_DB_PATH = ROOT / "data" / "estates.sqlite3"
+DEFAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
 
-def create_db_if_needed() -> None:  # Redesing the table
-    con = sqlite3.connect(DB_PATH)
+def create_db_if_needed(db_path: Path | str = DEFAULT_DB_PATH) -> None:
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
-    # Aktuální snapshot nabídek
     cur.execute("""
     CREATE TABLE IF NOT EXISTS estates (
         hash_id            INTEGER PRIMARY KEY,
@@ -32,12 +34,11 @@ def create_db_if_needed() -> None:  # Redesing the table
         area_m2            REAL,
         price_czk          REAL,
         price_czk_m2       REAL,
-        price_unit_value   INTEGER,   -- např. "za m²" = 3, "za nemovitost" = 1
-        first_seen         TEXT,      -- kdy jsme záznam poprvé uložili
-        last_seen          TEXT       -- kdy jsme ho naposledy viděli
+        price_unit_value   INTEGER,
+        first_seen         TEXT,
+        last_seen          TEXT
     );
     """)
-    # Historie cen – každý záznam změny
     cur.execute("""
     CREATE TABLE IF NOT EXISTS price_history (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,8 +48,7 @@ def create_db_if_needed() -> None:  # Redesing the table
         FOREIGN KEY(hash_id) REFERENCES estates(hash_id)
     );
     """)
-    # Pomocný index pro rychlé vyhledávání podle regionu
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_estates_region ON estates(region_id);")  # Is it needed?
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_estates_region ON estates(region_id);")
     con.commit()
     con.close()
 
@@ -62,7 +62,6 @@ def _pick(d: Dict[str, Any], *keys: str, default=None):
 
 
 def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Vytáhne stabilní subset polí z JSONu do ploché struktury pro DB."""
     loc = item.get("locality") or {}
     price_czk = _pick(item, "price_summary_czk", "price_czk", "price", default=None)
     price_unit_cb = item.get("price_unit_cb") or {}
@@ -87,10 +86,9 @@ def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def upsert_items(items: Iterable[Dict[str, Any]]) -> None:
-    """Uloží/aktualizuje nabídky a zapíše případné změny ceny do historie."""
-    create_db_if_needed()
-    con = sqlite3.connect(DB_PATH)
+def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path | str = DEFAULT_DB_PATH) -> None:
+    create_db_if_needed(db_path)
+    con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
 
@@ -100,14 +98,13 @@ def upsert_items(items: Iterable[Dict[str, Any]]) -> None:
         rec = _extract_flat_fields(raw)
         hid = rec["hash_id"]
         if hid is None:
-            continue  # bezpečnost – bez ID neukládáme
+            continue
 
-        # Zjisti aktuální záznam (jestli už existuje)
-        cur.execute("SELECT price_czk FROM estates WHERE hash_id = ?", (hid,))
+        cur.execute("SELECT price_czk, first_seen FROM estates WHERE hash_id = ?", (hid,))
         row = cur.fetchone()
         previous_price: Optional[float] = row["price_czk"] if row else None
+        first_seen_prev: Optional[str] = row["first_seen"] if row else None
 
-        # UPSERT (INSERT or REPLACE = aktualizace snapshotu)
         cur.execute("""
         INSERT INTO estates (
             hash_id, advert_name, category_main, category_sub, category_type,
@@ -138,11 +135,10 @@ def upsert_items(items: Iterable[Dict[str, Any]]) -> None:
             last_seen=excluded.last_seen;
         """, {
             **rec,
-            "first_seen": now if previous_price is None else _pick_record_first_seen(cur, hid, now),
+            "first_seen": first_seen_prev or now,
             "last_seen": now,
         })
 
-        # Změnila se cena? -> zapiš do historie
         if rec["price_czk"] is not None and rec["price_czk"] != previous_price:
             cur.execute(
                 "INSERT INTO price_history (hash_id, ts, price_czk) VALUES (?, ?, ?)",
@@ -153,16 +149,9 @@ def upsert_items(items: Iterable[Dict[str, Any]]) -> None:
     con.close()
 
 
-def _pick_record_first_seen(cur: sqlite3.Cursor, hash_id: int, fallback: str) -> str:
-    cur.execute("SELECT first_seen FROM estates WHERE hash_id = ?", (hash_id,))
-    row = cur.fetchone()
-    return row["first_seen"] if row and row["first_seen"] else fallback
-
-
-def get_known_ids() -> list[int]:
-    """Vrátí seznam všech hash_id, které už máme v databázi."""
-    create_db_if_needed()
-    con = sqlite3.connect(DB_PATH)
+def get_known_ids(db_path: Path | str = DEFAULT_DB_PATH) -> list[int]:
+    create_db_if_needed(db_path)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
     cur.execute("SELECT hash_id FROM estates;")
     ids = [row[0] for row in cur.fetchall()]

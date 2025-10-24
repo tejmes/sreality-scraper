@@ -11,7 +11,6 @@ from src.headers import build_browser_like_headers
 BASE_SEARCH = "https://www.sreality.cz/api/v1/estates/search"
 
 
-# --- Pomocná funkce pro přidání parametru do URL ---
 def _add(params: Dict[str, Any], key: str, value: Any) -> None:
     if value is None:
         return
@@ -23,7 +22,6 @@ def _add(params: Dict[str, Any], key: str, value: Any) -> None:
     params[key] = value
 
 
-# --- Sestavení dotazu na API ---
 def build_query(
         *,
         category_main_cb: Optional[int] = None,
@@ -78,7 +76,14 @@ def build_query(
     return f"{BASE_SEARCH}?{urlencode(params, doseq=True)}"
 
 
-# --- Stahování všech stránek ---
+def fetch_page(url: str) -> Dict[str, Any]:
+    headers = build_browser_like_headers()
+    with httpx.Client(headers=headers, timeout=30.0, follow_redirects=True) as client:
+        resp = client.get(url)
+        resp.raise_for_status()
+        return resp.json()
+
+
 def fetch_all_pages(base_url: str, max_pages: int = 1000) -> list[dict]:
     all_items: list[dict] = []
     offset = 0
@@ -94,11 +99,9 @@ def fetch_all_pages(base_url: str, max_pages: int = 1000) -> list[dict]:
 
     while page < max_pages:
         if total is not None and len(all_items) >= total:
-            print(f"[STOP] dosažen konec ({len(all_items)}/{total}) → končím")
             break
 
         url = f"{base_url}&limit={limit}&offset={offset}"
-
         try:
             data = fetch_page(url)
         except Exception as e:
@@ -110,42 +113,22 @@ def fetch_all_pages(base_url: str, max_pages: int = 1000) -> list[dict]:
 
         items = extract_items(data)
         if not items:
-            print(f"[DEBUG] prázdná stránka {page + 1}, končím.")
             break
 
         all_items.extend(items)
-        print(f"[PAGE] {page + 1} → přidáno {len(items)} (celkem {len(all_items)}/{total})")
-
         offset += limit
         page += 1
         time.sleep(0.3)
 
-    if total and len(all_items) > total:
-        print(f"[FIX] ořezávám {len(all_items)} → {total} podle total z API")
-        all_items = all_items[:total]
-
-    print(f"[DONE] Načteno {len(all_items)} výsledků z {page} stránek (celkem {total}).")
-    print(f"[RETURN DEBUG] Vrací se {len(all_items)} inzerátů zpět do app.py")
     return all_items
 
 
-# --- Jedna stránka ---
-def fetch_page(url: str) -> Dict[str, Any]:
-    headers = build_browser_like_headers()
-    with httpx.Client(headers=headers, timeout=30.0, follow_redirects=True) as client:
-        resp = client.get(url)
-        resp.raise_for_status()
-        return resp.json()
-
-
-# --- Pomocné extrakce ---
 def extract_pagination(data: Dict[str, Any]) -> Dict[str, Any]:
     return data.get("pagination", {}) if isinstance(data, dict) else {}
 
 
 def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     if not isinstance(data, dict):
-        print("[extract_items] data není dict")
         return []
     results = data.get("results", [])
     if not results and "_embedded" in data:
@@ -153,7 +136,6 @@ def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     return results
 
 
-# --- Převod pro UI ---
 def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
     loc = item.get("locality", {})
     if isinstance(loc, dict):
@@ -164,9 +146,15 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
         loc_txt = str(loc)
 
     area = item.get("estate_area") or item.get("land_area") or item.get("usable_area")
-
-    # Použijeme vždy cenu z price_summary_czk
     price = item.get("price_summary_czk")
+
+    # Preferovaný způsob – API samo posílá kanonické URL v _links.self.href
+    url = None
+    links = item.get("_links", {})
+    if isinstance(links, dict):
+        self_link = links.get("self", {}).get("href")
+        if self_link:
+            url = "https://www.sreality.cz" + self_link
 
     return {
         "id": item.get("hash_id"),
@@ -174,7 +162,7 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
         "locality": loc_txt,
         "area": area,
         "price": price,
-        "url": f"https://www.sreality.cz/detail/{item.get('hash_id')}",
+        "url": url or f"https://www.sreality.cz/detail/{item.get('hash_id')}",
     }
 
 

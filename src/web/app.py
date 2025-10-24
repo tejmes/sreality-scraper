@@ -1,18 +1,34 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import httpx
 
 from src.sreality_client import (
     build_query,
+    fetch_page,
     fetch_all_pages,
+    extract_items,
+    extract_pagination,
     to_card,
     save_json,
+)
+from src.routines_storage import (
+    list_routines,
+    get_routine,
+    create_routine,
+    update_routine_name,
+    delete_routine,
+    routine_db_path,
+)
+from src.storage import (
+    upsert_items,
+    get_known_ids,
+    create_db_if_needed,
 )
 
 
@@ -42,50 +58,38 @@ def _clean_str(v: Optional[str]) -> Optional[str]:
     return v if v else None
 
 
+def _split_keywords(description_search: Optional[str]) -> list[str]:
+    if not description_search:
+        return []
+    return [w.strip() for w in description_search.replace(";", ",").split(",") if w.strip()]
+
+
 def search_multiple_keywords(
         *,
         base_filters: dict,
         description_search: Optional[str],
-        use_price_m2: bool,
-        fetch_all: bool = False
-) -> list[dict]:
+        fetch_all: bool = False,
+) -> tuple[list[dict], dict]:
     """
-    Provede jedno nebo více dotazů na API podle klíčových slov oddělených čárkou/tečkou/čárkou
-    a sjednotí výsledky bez duplikátů.
-    - base_filters = ostatní parametry (kromě description_search)
-    - fetch_all = False → fetch_page (jedna stránka)
-                 True  → fetch_all_pages (všechny stránky)
+    Provede jedno nebo více dotazů na API podle klíčových slov a sjednotí výsledky bez duplikátů.
+    Vrací (unikátní_výsledky, pagination_info)
     """
-    from src.sreality_client import build_query, fetch_page, fetch_all_pages, extract_items, extract_pagination
-
-    # rozdělit klíčová slova
-    keywords = []
-    if description_search:
-        keywords = [w.strip() for w in description_search.replace(";", ",").split(",") if w.strip()]
-
-    print(f"[SEARCH_MULTI] Klíčová slova: {keywords or ['(žádné)']}")
+    keywords = _split_keywords(description_search)
     all_results = []
+    last_limit = base_filters.get("limit", 60)
 
-    # --- každý dotaz zvlášť ---
-    for i, kw in enumerate(keywords or [None]):
-        url = build_query(
-            description_search=_clean_str(kw),
-            **base_filters
-        )
-        print(f"[SEARCH_MULTI] Dotaz {i + 1}/{len(keywords or [None])}: {url}")
-
+    for kw in (keywords or [None]):
+        url = build_query(description_search=_clean_str(kw), **base_filters)
         if fetch_all:
             data = fetch_all_pages(url)
             items = data
         else:
             data = fetch_page(url)
             items = extract_items(data)
-            pagination = extract_pagination(data)
-            print(f"[SEARCH_MULTI] {len(items)} položek (total={pagination.get('total')})")
-
+            last_limit = extract_pagination(data).get("limit", last_limit)
         all_results.extend(items)
 
-    # --- sloučení (UNION) ---
+    # sjednocení výsledků (UNION)
     seen = set()
     unique = []
     for r in all_results:
@@ -94,8 +98,9 @@ def search_multiple_keywords(
             unique.append(r)
             seen.add(hid)
 
-    print(f"[SEARCH_MULTI] Po sjednocení: {len(unique)} unikátních inzerátů")
-    return unique
+    # total = skutečný počet unikátních výsledků
+    total_final = len(unique)
+    return unique, {"total": total_final, "limit": last_limit}
 
 
 # --- FastAPI a šablony ---
@@ -191,7 +196,7 @@ def search(
         limit: str = Form("60"),
         offset: str = Form("0"),
 ):
-    # --- převody ---
+    # převody
     cm = _to_int(category_main_cb)
     ct = _to_int(category_type_cb)
     subs = [_to_int(s) for s in category_sub_cb or [] if _to_int(s) is not None]
@@ -207,10 +212,8 @@ def search(
     adv_age = _to_int(advert_age_to)
     lim = _to_int(limit) or 60
     off = _to_int(offset) or 0
-
     use_price_m2 = (price_mode == "per_m2")
 
-    # --- URL dotazu ---
     base_filters = dict(
         category_main_cb=cm,
         category_type_cb=ct,
@@ -233,21 +236,16 @@ def search(
         offset=off,
     )
 
-    items = search_multiple_keywords(
+    items, pagination = search_multiple_keywords(
         base_filters=base_filters,
         description_search=description_search,
-        use_price_m2=use_price_m2,
-        fetch_all=False,  # jen aktuální stránka (rychlé vyhledávání)
+        fetch_all=False,
     )
 
-    total = len(items)
-
-    print(f"[SEARCH] Staženo {len(items)} záznamů (celkem {total})")
-
+    total = pagination.get("total", len(items))
     cards = [to_card(x) for x in items]
-    out_path = save_json({"results": items}, "snapshots/last_search.json")
+    save_json({"results": items}, "snapshots/last_search.json")
 
-    # --- stránkování ---
     has_prev = off > 0
     has_next = off + lim < total
 
@@ -291,13 +289,185 @@ def search(
 
 
 # =========================================
-#           STRÁNKA 2 – RUTINA
+#           RUTINY – UI + CRUD
 # =========================================
 @app.get("/routine", response_class=HTMLResponse)
 def routine_index(request: Request):
+    # formulář pro vytvoření nové rutiny
     return templates.TemplateResponse("routine.html", {"request": request})
 
 
+@app.post("/routines/create")
+def routines_create(
+        request: Request,
+        routine_name: str = Form(...),
+        routine_description: Optional[str] = Form(None),
+
+        category_main_cb: str = Form(...),
+        category_type_cb: Optional[str] = Form(None),
+        category_sub_cb: Optional[List[str]] = Form(None),
+        locality_country_id: Optional[str] = Form(None),
+        locality_region_id: Optional[str] = Form(None),
+        locality_district_id: Optional[str] = Form(None),
+        locality_search_name: Optional[str] = Form(None),
+        locality_entity_type: Optional[str] = Form(None),
+        locality_entity_id: Optional[str] = Form(None),
+        locality_radius: Optional[str] = Form(None),
+        description_search: Optional[str] = Form(None),
+        estate_area_from: Optional[str] = Form(None),
+        estate_area_to: Optional[str] = Form(None),
+        price_from: Optional[str] = Form(None),
+        price_to: Optional[str] = Form(None),
+        price_mode: str = Form("total"),
+        advert_age_to: Optional[str] = Form(None),
+):
+    filters = {
+        "category_main_cb": _to_int(category_main_cb),
+        "category_type_cb": _to_int(category_type_cb),
+        "category_sub_cb": [_to_int(s) for s in (category_sub_cb or []) if _to_int(s) is not None],
+        "locality_country_id": _to_int(locality_country_id) or 112,
+        "locality_region_id": _to_int(locality_region_id),
+        "locality_district_id": _to_int(locality_district_id),
+        "locality_search_name": _clean_str(locality_search_name),
+        "locality_entity_type": _clean_str(locality_entity_type),
+        "locality_entity_id": _to_int(locality_entity_id),
+        "locality_radius": _to_float(locality_radius),
+        "description_search": _clean_str(description_search),
+        "estate_area_from": _to_int(estate_area_from),
+        "estate_area_to": _to_int(estate_area_to),
+        "price_from": _to_int(price_from) if price_mode != "per_m2" else None,
+        "price_to": _to_int(price_to) if price_mode != "per_m2" else None,
+        "price_m2_from": _to_int(price_from) if price_mode == "per_m2" else None,
+        "price_m2_to": _to_int(price_to) if price_mode == "per_m2" else None,
+        "advert_age_to": _to_int(advert_age_to),
+        "price_mode": price_mode,
+        "limit": 60,
+        "offset": 0,
+    }
+
+    routine = create_routine(name=routine_name, description=routine_description, filters=filters)
+    create_db_if_needed(routine_db_path(routine["id"]))
+
+    return RedirectResponse(url=f"/routines/{routine['id']}", status_code=303)
+
+
+@app.get("/routines", response_class=HTMLResponse)
+def routines_list(request: Request):
+    routines = list_routines()
+    return templates.TemplateResponse("routines.html", {"request": request, "routines": routines})
+
+
+@app.get("/routines/{routine_id}", response_class=HTMLResponse)
+def routines_detail(request: Request, routine_id: str):
+    routine = get_routine(routine_id)
+    if not routine:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    return templates.TemplateResponse("routine_detail.html", {"request": request, "routine": routine})
+
+
+@app.post("/routines/{routine_id}/update_name")
+def routines_update_name(routine_id: str, new_name: str = Form(...)):
+    ok = update_routine_name(routine_id, new_name)
+    if not ok:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
+
+
+@app.post("/routines/{routine_id}/update_description")
+def routines_update_description(routine_id: str, new_description: str = Form(...)):
+    from src.routines_storage import update_routine_description
+    ok = update_routine_description(routine_id, new_description)
+    if not ok:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
+
+
+@app.post("/routines/{routine_id}/delete")
+def routines_delete(routine_id: str):
+    ok = delete_routine(routine_id)
+    if not ok:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    return RedirectResponse(url="/routines", status_code=303)
+
+
+@app.post("/routines/{routine_id}/run", response_class=HTMLResponse)
+def routines_run(
+        request: Request,
+        routine_id: str,
+        only_new: Optional[str] = Form(None),
+):
+    routine = get_routine(routine_id)
+    if not routine:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+
+    f = routine["filters"]
+
+    base_filters = dict(
+        category_main_cb=f.get("category_main_cb"),
+        category_type_cb=f.get("category_type_cb"),
+        category_sub_cb=f.get("category_sub_cb"),
+        locality_country_id=f.get("locality_country_id") or 112,
+        locality_region_id=f.get("locality_region_id"),
+        locality_district_id=f.get("locality_district_id"),
+        locality_search_name=f.get("locality_search_name"),
+        locality_entity_type=f.get("locality_entity_type"),
+        locality_entity_id=f.get("locality_entity_id"),
+        locality_radius=f.get("locality_radius"),
+        estate_area_from=f.get("estate_area_from"),
+        estate_area_to=f.get("estate_area_to"),
+        price_from=f.get("price_from"),
+        price_to=f.get("price_to"),
+        price_m2_from=f.get("price_m2_from"),
+        price_m2_to=f.get("price_m2_to"),
+        advert_age_to=f.get("advert_age_to"),
+        limit=60,
+        offset=0,
+    )
+
+    items, _ = search_multiple_keywords(
+        base_filters=base_filters,
+        description_search=f.get("description_search"),
+        fetch_all=True,
+    )
+
+    # per-routine DB
+    dbp = routine_db_path(routine_id)
+    known_ids = set(get_known_ids(dbp))
+    new_items = [x for x in items if x.get("hash_id") and x["hash_id"] not in known_ids]
+
+    # Vždy uložit do per-routine DB
+    upsert_items(items, dbp)
+
+    show_only_new = bool(only_new)
+    displayed = new_items if show_only_new else items
+    cards = [to_card(x) for x in displayed]
+
+    return templates.TemplateResponse(
+        "results.html",
+        {
+            "request": request,
+            "items": displayed,
+            "cards": cards,
+            "pagination": {
+                "total": len(displayed),
+                "limit": 0,
+                "offset": 0,
+                "has_prev": False,
+                "has_next": False,
+                "prev_offset": 0,
+                "next_offset": 0,
+            },
+            "filters": {
+                **{k: f.get(k) for k in f.keys()},
+                "only_new": show_only_new,
+            },
+        },
+    )
+
+
+# =========================================
+#           PŮVODNÍ AD-HOC RUTINA
+# =========================================
 @app.post("/routine/run", response_class=HTMLResponse)
 def routine_run(
         request: Request,
@@ -318,9 +488,8 @@ def routine_run(
         price_to: Optional[str] = Form(None),
         price_mode: str = Form("total"),
         advert_age_to: Optional[str] = Form(None),
-        only_new: Optional[str] = Form(None),  # <── přidaný parametr
+        only_new: Optional[str] = Form(None),
 ):
-    # --- převody ---
     cm = _to_int(category_main_cb)
     ct = _to_int(category_type_cb)
     subs = [_to_int(s) for s in category_sub_cb or [] if _to_int(s) is not None]
@@ -335,8 +504,7 @@ def routine_run(
     adv_age = _to_int(advert_age_to)
     use_price_m2 = (price_mode == "per_m2")
 
-    # --- vytvoření URL dotazu ---
-    url = build_query(
+    base_filters = dict(
         category_main_cb=cm,
         category_type_cb=ct,
         category_sub_cb=subs,
@@ -357,42 +525,17 @@ def routine_run(
         advert_age_to=adv_age,
     )
 
-    base_filters = dict(
-        category_main_cb=cm,
-        category_type_cb=ct,
-        category_sub_cb=subs,
-        locality_country_id=country,
-        locality_region_id=reg,
-        locality_district_id=dist,
-        locality_search_name=_clean_str(locality_search_name),
-        locality_entity_type=_clean_str(locality_entity_type),
-        locality_entity_id=_to_int(locality_entity_id),
-        locality_radius=radius,
-        estate_area_from=ea_from,
-        estate_area_to=ea_to,
-        price_from=None if use_price_m2 else p_from,
-        price_to=None if use_price_m2 else p_to,
-        price_m2_from=p_from if use_price_m2 else None,
-        price_m2_to=p_to if use_price_m2 else None,
-        advert_age_to=adv_age,
-    )
-
-    items = search_multiple_keywords(
+    items, _ = search_multiple_keywords(
         base_filters=base_filters,
         description_search=description_search,
-        use_price_m2=use_price_m2,
-        fetch_all=True,  # rutina – stáhne všechny stránky
+        fetch_all=True,
     )
 
-    from src.storage import upsert_items, get_known_ids
+    # ad-hoc používá globální DB (historické chování)
     known_ids = set(get_known_ids())
     new_items = [x for x in items if x.get("hash_id") and x["hash_id"] not in known_ids]
-
-    # vždy uložíme všechny (aby se databáze aktualizovala)
     upsert_items(items)
-    print(f"[ROUTINE] Uloženo {len(items)} inzerátů (z toho {len(new_items)} nových)")
 
-    # --- rozhodni, co se zobrazí ---
     show_only_new = bool(only_new)
     displayed_items = new_items if show_only_new else items
 

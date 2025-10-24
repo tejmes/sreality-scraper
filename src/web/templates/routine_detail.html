@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8"/>
+    <title>Rutina – detail</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
+        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
+        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
+        .toolbar a:hover { background:#d1d5db; }
+        .card { border:1px solid #e5e7eb; border-radius:12px; padding:1rem; background:#fff; }
+        .row { display:grid; gap:1rem; grid-template-columns: 1fr auto; align-items:center; }
+        input[type="text"] { width:100%; padding:.5rem .6rem; border:1px solid #ccc; border-radius:6px; }
+        button, .btn { padding:.6rem 1rem; border:0; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
+        button:hover, .btn:hover { background:#0b5ed7; }
+        .danger { background:#ef4444; }
+        .danger:hover { background:#dc2626; }
+        pre { background:#0b1020; color:#e5e7eb; padding:12px; border-radius:8px; overflow:auto; font-size:.9rem; }
+        .muted { color:#6b7280; }
+        form.inline { display:inline; }
+        .row-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+        label { display:flex; align-items:center; gap:.5rem; }
+        input[type="checkbox"] { transform: scale(1.15); }
+        textarea {
+            width: 100%;
+            padding: .6rem .7rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: .95rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 90px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+        }
+        /* Modal styles */
+        #loading-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        #loading-modal .box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem 2.5rem;
+            max-width: 480px;
+            text-align: center;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 4px solid #ddd;
+            border-top-color: #0d6efd;
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 0.9s linear infinite;
+        }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <h1>Rutina – {{ routine.name }}</h1>
+    <div style="display:flex; gap:.5rem;">
+        <a href="/routines">← Zpět na seznam</a>
+        <a href="/">Vyhledávání</a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <form class="row" action="/routines/{{ routine.id }}/update_name" method="post">
+        <input type="text" name="new_name" value="{{ routine.name }}" placeholder="Název rutiny">
+        <button type="submit">Uložit název</button>
+    </form>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+        <div class="row-actions">
+            <form id="run-form" class="inline" action="/routines/{{ routine.id }}/run" method="post"
+                  style="display:flex; gap:.6rem;">
+                <label><input type="checkbox" name="only_new" value="1"> pouze nové</label>
+                <button type="submit" id="run-btn">Spustit teď</button>
+            </form>
+        </div>
+        <form class="inline" action="/routines/{{ routine.id }}/delete" method="post"
+              onsubmit="return confirm('Opravdu smazat tuto rutinu včetně jejích dat?');">
+            <button class="danger" type="submit">Smazat rutinu</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="loading-modal">
+    <div class="box">
+        <h2 style="margin-bottom:.5rem;">Načítání může chvíli trvat…</h2>
+        <p style="color:#555; line-height:1.5;">
+            Spouštím rutinu <b>{{ routine.name }}</b>.<br>
+            Pokud má vyhledávání mnoho výsledků, načítání může trvat i několik desítek sekund.
+        </p>
+        <div style="margin-top:1.2rem;">
+            <div class="spinner"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h3>Popis rutiny</h3>
+    <form action="/routines/{{ routine.id }}/update_description" method="post" style="margin-top:.5rem;">
+        <textarea name="new_description" rows="4"
+                  placeholder="Popis rutiny (např. Sleduj stavební pozemky do 3 mil. Kč ve Středočeském kraji)">{{ routine.description }}</textarea>
+        <div style="margin-top:.5rem; display:flex; gap:.5rem;">
+            <button type="submit">Uložit popis</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Uložené filtry</h3>
+    <pre>{{ routine.filters | tojson(indent=2) }}</pre>
+    <div class="muted">Pozn.: úprava filtrů přijde později. Zatím lze měnit název, popis a rutinu spouštět/smazat.</div>
+</div>
+
+<script>
+    const modal = document.getElementById("loading-modal");
+    const runForm = document.getElementById("run-form");
+
+    // zobrazit při spuštění rutiny
+    runForm.addEventListener("submit", () => {
+        modal.style.display = "flex";
+    });
+
+    // schovat při běžném načtení stránky
+    window.addEventListener("load", () => {
+        modal.style.display = "none";
+    });
+
+    // schovat i při návratu z BFCache (např. tlačítko Zpět)
+    window.addEventListener("pageshow", (e) => {
+        if (e.persisted) {
+            modal.style.display = "none";
+        }
+    });
+</script>
+
+</body>
+</html>

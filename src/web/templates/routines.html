@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8"/>
+    <title>Rutiny – seznam</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
+        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
+        .toolbar a:hover { background:#d1d5db; }
+        table { width:100%; border-collapse: collapse; }
+        th, td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #e5e7eb; }
+        th { background:#f9fafb; }
+        .actions { display:flex; gap:.5rem; }
+        .btn { padding:.4rem .7rem; border:1px solid #d1d5db; border-radius:8px; text-decoration:none; color:#111; background:#fff; }
+        .btn:hover { background:#f3f4f6; }
+        .muted { color:#6b7280; font-size:.95rem; }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <h1>Rutiny</h1>
+    <div style="display:flex; gap:.5rem;">
+        <a href="/">← Vyhledávání</a>
+        <a href="/routine">＋ Nová rutina</a>
+    </div>
+</div>
+
+{% if routines|length == 0 %}
+<p class="muted">Zatím nemáš žádné rutiny.</p>
+{% else %}
+<table>
+    <thead>
+    <tr>
+        <th>Název</th>
+        <th>Vytvořeno</th>
+        <th>Popis</th>
+        <th>Akce</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in routines %}
+    <tr>
+        <td><a class="btn" href="/routines/{{ r.id }}">{{ r.name }}</a></td>
+        <td class="muted">{{ r.created_at }}</td>
+        <td class="muted">
+            {% if r.description %}
+            {{ r.description }}
+            {% else %}
+            <span style="color:#9ca3af;">(bez popisu)</span>
+            {% endif %}
+        </td>
+        <td class="actions">
+            <a class="btn" href="/routines/{{ r.id }}">Detail</a>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+</body>
+</html>
