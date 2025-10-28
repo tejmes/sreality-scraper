@@ -406,6 +406,27 @@
             renderTags();
         }
     });
+        /* =============== VZÁJEMNÉ VYLUČOVÁNÍ ADRESY A KRAJE ================== */
+    const addressInput = document.getElementById("locality_search_name");
+    const regionSelect = document.getElementById("locality_region_id");
+
+    function updateRegionLock() {
+        const hasAddress = addressInput.value.trim().length > 0;
+        regionSelect.disabled = hasAddress;
+        if (hasAddress) {
+            regionSelect.value = "";
+        }
+    }
+
+    addressInput.addEventListener("input", updateRegionLock);
+
+    // při resetu filtrů – povolit kraj znovu
+    document.getElementById("reset-filters").addEventListener("click", () => {
+        regionSelect.disabled = false;
+    });
+
+    // po načtení stránky – aktualizovat stav
+    window.addEventListener("load", updateRegionLock);
 </script>
 
 </body>
