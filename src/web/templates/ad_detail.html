@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <title>{{ estate.advert_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
+        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
+        .toolbar a:hover { background:#d1d5db; }
+        .card { border:1px solid #e5e7eb; border-radius:12px; padding:1rem; background:#fff; max-width:800px; }
+        .muted { color:#6b7280; }
+        canvas { max-width:100%; height:300px; }
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <h1>{{ estate.advert_name }}</h1>
+    <div style="display:flex; gap:.5rem;">
+        <a href="/routines/{{ routine_id }}">← Zpět na rutinu</a>
+        <a href="{{ sreality_url }}" target="_blank" rel="noopener">Otevřít na Sreality.cz</a>
+    </div>
+</div>
+
+<div class="card">
+    <p><strong>Místo:</strong> {{ estate.city or "-" }} {% if estate.region_name %}({{ estate.region_name }}){% endif %}
+    </p>
+    <p><strong>Plocha:</strong> {{ estate.area_m2 or "-" }} m²</p>
+    <p><strong>Aktuální cena:</strong> {{ estate.price_czk or "-" }} Kč</p>
+</div>
+
+<div class="card" style="margin-top:1.5rem;">
+    <h3>Vývoj ceny</h3>
+    {% if history|length == 0 %}
+    <p class="muted">Žádná historie cen není k dispozici.</p>
+    {% else %}
+    <canvas id="priceChart"></canvas>
+    <script>
+        const ctx = document.getElementById('priceChart');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: {{ history | map(attribute='ts') | list | tojson }},
+            datasets: [{
+              label: 'Cena (Kč)',
+              data: {{ history | map(attribute='price_czk') | list | tojson }},
+              borderColor: '#0d6efd',
+              fill: false,
+              tension: 0.1
+            }]
+          },
+          options: {
+            scales: {
+              x: { title: { display: true, text: 'Datum' } },
+              y: { title: { display: true, text: 'Cena (Kč)' }, beginAtZero: false }
+            }
+          }
+        });
+    </script>
+    {% endif %}
+</div>
+
+</body>
+</html>

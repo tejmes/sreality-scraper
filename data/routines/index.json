@@ -1,7 +1,7 @@
 {
   "routines": [
     {
-      "id": "cd8404b588b6",
+      "id": "29fc7b6a86ff",
       "name": "Test",
       "description": "Testuju",
       "filters": {
@@ -11,13 +11,13 @@
           18
         ],
         "locality_country_id": 112,
-        "locality_region_id": 9,
+        "locality_region_id": null,
         "locality_district_id": null,
         "locality_search_name": null,
         "locality_entity_type": null,
         "locality_entity_id": null,
         "locality_radius": null,
-        "description_search": "Kanalizace, Stavební povolení",
+        "description_search": null,
         "estate_area_from": null,
         "estate_area_to": null,
         "price_from": null,
@@ -29,14 +29,48 @@
         "limit": 60,
         "offset": 0
       },
-      "created_at": "2025-10-24T11:29:09Z",
+      "created_at": "2025-10-28T13:54:29Z",
       "schedule": null,
       "emails": [],
       "active": true
     },
     {
-      "id": "9b066a90fb2d",
+      "id": "22276b37c6aa",
       "name": "Test1",
+      "description": "",
+      "filters": {
+        "category_main_cb": 3,
+        "category_type_cb": 1,
+        "category_sub_cb": [
+          18
+        ],
+        "locality_country_id": 112,
+        "locality_region_id": null,
+        "locality_district_id": null,
+        "locality_search_name": null,
+        "locality_entity_type": null,
+        "locality_entity_id": null,
+        "locality_radius": null,
+        "description_search": null,
+        "estate_area_from": null,
+        "estate_area_to": null,
+        "price_from": null,
+        "price_to": null,
+        "price_m2_from": null,
+        "price_m2_to": null,
+        "advert_age_to": null,
+        "price_mode": "total",
+        "limit": 60,
+        "offset": 0
+      },
+      "created_at": "2025-10-28T13:55:54Z",
+      "schedule": null,
+      "emails": [],
+      "active": true
+    },
+    {
+      "id": "e57f93b03baa",
+      "name": "TestChytré",
       "description": "",
       "filters": {
         "category_main_cb": 3,
@@ -51,7 +85,7 @@
         "locality_entity_type": null,
         "locality_entity_id": null,
         "locality_radius": null,
-        "description_search": "Kanalizace, Stavební povolení",
+        "description_search": "Kanalizace, ¨Stavební povolení",
         "estate_area_from": null,
         "estate_area_to": null,
         "price_from": null,
@@ -63,7 +97,7 @@
         "limit": 60,
         "offset": 0
       },
-      "created_at": "2025-10-24T11:29:39Z",
+      "created_at": "2025-10-28T13:57:02Z",
       "schedule": null,
       "emails": [],
       "active": true

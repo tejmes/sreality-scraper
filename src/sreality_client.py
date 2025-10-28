@@ -148,13 +148,78 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
     area = item.get("estate_area") or item.get("land_area") or item.get("usable_area")
     price = item.get("price_summary_czk")
 
-    # Preferovaný způsob – API samo posílá kanonické URL v _links.self.href
+    # 1) Preferovat kanonickou URL z API
     url = None
     links = item.get("_links", {})
     if isinstance(links, dict):
-        self_link = links.get("self", {}).get("href")
+        self_link = (links.get("self") or {}).get("href")
         if self_link:
             url = "https://www.sreality.cz" + self_link
+
+    # 2) Fallback – robustní složení SEO URL (včetně locality slugu)
+    if not url:
+        # Pomocné mapy
+        type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
+        main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
+        sub_map = {
+            18: "komercni", 19: "bydleni", 20: "pole", 21: "lesy", 22: "louky",
+            23: "zahrady", 24: "ostatni", 33: "chata", 35: "pamatka-jine",
+            37: "rodinny", 39: "vila", 40: "na-klic", 43: "chalupa",
+            44: "zemedelska-usedlost", 46: "rybniky", 48: "sady-vinice", 54: "vicegeneracni-dum"
+        }
+
+        def _slugify(s: str) -> str:
+            import unicodedata, re
+            s = unicodedata.normalize("NFKD", s)
+            s = "".join(ch for ch in s if not unicodedata.combining(ch))
+            s = s.lower()
+            s = re.sub(r"[^a-z0-9]+", "-", s)
+            s = re.sub(r"-{2,}", "-", s).strip("-")
+            return s
+
+        # Kategorie části
+        ct_val = (item.get("category_type_cb") or {}).get("value")
+        cm_val = (item.get("category_main_cb") or {}).get("value")
+        cs_val = (item.get("category_sub_cb") or {}).get("value")
+        ct = type_map.get(ct_val, "detail")
+        cm = main_map.get(cm_val, "nemovitost")
+        cs = sub_map.get(cs_val, "")
+
+        # Locality slug: preferuj SEO.locality, jinak slož z locality dictu
+        locality_slug = ""
+        seo = item.get("seo") or {}
+        if isinstance(seo, dict):
+            locality_slug = seo.get("locality") or ""
+
+        if not locality_slug:
+            # pokus složit ze známých polí locality
+            if isinstance(loc, dict):
+                parts_guess = []
+                # Město / městská část
+                for key in ("city", "municipality", "quarter", "ward"):
+                    val = loc.get(key)
+                    if val:
+                        parts_guess.append(str(val))
+                # Ulice – v různých datech může být 'street' nebo 'street_name'
+                for key in ("street", "street_name"):
+                    val = loc.get(key)
+                    if val:
+                        parts_guess.append(str(val))
+                if parts_guess:
+                    locality_slug = "-".join(_slugify(p) for p in parts_guess if p)
+            # poslední zoufalý pokus: někdy je locality text celé v jednom řetězci
+            if not locality_slug and isinstance(loc, str):
+                locality_slug = _slugify(loc)
+
+        # Když se nepodaří nic zjistit, raději ponecháme „/detail/<id>“ než rozbitý slug,
+        # ale pokud aspoň něco máme, složíme plnou SEO URL.
+        hid = item.get("hash_id")
+        if locality_slug:
+            parts = [p for p in (ct, cm, cs) if p]
+            cat_path = "/".join(parts)
+            url = f"https://www.sreality.cz/detail/{cat_path}/{locality_slug}/{hid}"
+        else:
+            url = f"https://www.sreality.cz/detail/{hid}"
 
     return {
         "id": item.get("hash_id"),
@@ -162,7 +227,7 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
         "locality": loc_txt,
         "area": area,
         "price": price,
-        "url": url or f"https://www.sreality.cz/detail/{item.get('hash_id')}",
+        "url": url,
     }
 
 

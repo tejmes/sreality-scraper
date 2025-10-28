@@ -8,6 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import httpx
 
+from fastapi.responses import HTMLResponse
+import sqlite3
+from datetime import datetime
+
 from src.sreality_client import (
     build_query,
     fetch_page,
@@ -77,19 +81,27 @@ def search_multiple_keywords(
     keywords = _split_keywords(description_search)
     all_results = []
     last_limit = base_filters.get("limit", 60)
+    total_from_api = 0
+
+    # více dotazů = chytré vyhledávání
+    multi_search = len(keywords) > 1
 
     for kw in (keywords or [None]):
         url = build_query(description_search=_clean_str(kw), **base_filters)
         if fetch_all:
             data = fetch_all_pages(url)
             items = data
+            pag = {"total": len(items), "limit": base_filters.get("limit", 60)}
         else:
             data = fetch_page(url)
             items = extract_items(data)
-            last_limit = extract_pagination(data).get("limit", last_limit)
+            pag = extract_pagination(data)
+
+        last_limit = pag.get("limit", last_limit)
+        total_from_api = max(total_from_api, pag.get("total", 0))
         all_results.extend(items)
 
-    # sjednocení výsledků (UNION)
+    # sjednocení výsledků (bez duplicit podle hash_id)
     seen = set()
     unique = []
     for r in all_results:
@@ -98,8 +110,14 @@ def search_multiple_keywords(
             unique.append(r)
             seen.add(hid)
 
-    # total = skutečný počet unikátních výsledků
-    total_final = len(unique)
+    # --- rozhodnutí, co zobrazit jako total ---
+    if multi_search:
+        # při chytrém vyhledávání chceme reálný počet všech unikátních výsledků
+        total_final = len(unique)
+    else:
+        # při běžném vyhledávání použij hodnotu z API (aby stránkování fungovalo)
+        total_final = total_from_api or len(unique)
+
     return unique, {"total": total_final, "limit": last_limit}
 
 
@@ -401,8 +419,12 @@ def routines_run(
         return HTMLResponse("Rutina nenalezena.", status_code=404)
 
     f = routine["filters"]
+    dbp = routine_db_path(routine_id)
+    create_db_if_needed(dbp)
 
-    base_filters = dict(
+    # --- FULL SYNC pokaždé při spuštění ---
+    print(f"[SYNC] Spouštím full sync pro rutinu {routine_id}")
+    base_filters_full = dict(
         category_main_cb=f.get("category_main_cb"),
         category_type_cb=f.get("category_type_cb"),
         category_sub_cb=f.get("category_sub_cb"),
@@ -424,32 +446,27 @@ def routines_run(
         offset=0,
     )
 
-    items, _ = search_multiple_keywords(
-        base_filters=base_filters,
+    all_items, _ = search_multiple_keywords(
+        base_filters=base_filters_full,
         description_search=f.get("description_search"),
         fetch_all=True,
     )
+    upsert_items(all_items, dbp)
+    print(f"[SYNC] Uloženo {len(all_items)} inzerátů do {dbp.name}")
 
-    # per-routine DB
-    dbp = routine_db_path(routine_id)
-    known_ids = set(get_known_ids(dbp))
-    new_items = [x for x in items if x.get("hash_id") and x["hash_id"] not in known_ids]
-
-    # Vždy uložit do per-routine DB
-    upsert_items(items, dbp)
-
-    show_only_new = bool(only_new)
-    displayed = new_items if show_only_new else items
-    cards = [to_card(x) for x in displayed]
+    # --- ZOBRAZ VŠECHNY VÝSLEDKY NAJEDNOU ---
+    cards = []
+    for r in all_items:
+        cards.append(to_card(r))
 
     return templates.TemplateResponse(
         "results.html",
         {
             "request": request,
-            "items": displayed,
+            "items": all_items,
             "cards": cards,
             "pagination": {
-                "total": len(displayed),
+                "total": len(all_items),
                 "limit": 0,
                 "offset": 0,
                 "has_prev": False,
@@ -459,8 +476,63 @@ def routines_run(
             },
             "filters": {
                 **{k: f.get(k) for k in f.keys()},
-                "only_new": show_only_new,
+                "routine_id": routine_id,
+                "only_new": bool(only_new),
             },
+        },
+    )
+
+
+@app.get("/routines/{routine_id}/ad/{hash_id}", response_class=HTMLResponse)
+def ad_detail(request: Request, routine_id: str, hash_id: int):
+    db_path = routine_db_path(routine_id)
+    if not db_path.exists():
+        return HTMLResponse("Databáze rutiny neexistuje.", status_code=404)
+
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT * FROM estates WHERE hash_id = ?
+    """, (hash_id,))
+    row = cur.fetchone()
+    if not row:
+        con.close()
+        return HTMLResponse("Inzerát nenalezen.", status_code=404)
+
+    estate = dict(row)
+
+    # načteme historii cen
+    cur.execute("""
+        SELECT ts, price_czk FROM price_history WHERE hash_id = ? ORDER BY ts ASC
+    """, (hash_id,))
+    history = [{"ts": r[0], "price_czk": r[1]} for r in cur.fetchall()]
+    con.close()
+
+    # Použijeme to_card na rekonstrukci kanonické URL
+    from src.sreality_client import to_card
+    sreality_url = to_card({
+        "hash_id": estate["hash_id"],
+        "advert_name": estate["advert_name"],
+        "category_main_cb": {"value": estate["category_main"]},
+        "category_type_cb": {"value": estate["category_type"]},
+        "category_sub_cb": {"value": estate["category_sub"]},
+        "locality": {
+            "city": estate.get("city"),
+            "district": estate.get("district"),
+            "region": estate.get("region_name"),
+        },
+        "seo": {"locality": estate.get("city") or ""},
+    })["url"]
+
+    return templates.TemplateResponse(
+        "ad_detail.html",
+        {
+            "request": request,
+            "routine_id": routine_id,
+            "estate": estate,
+            "history": history,
+            "sreality_url": sreality_url,
         },
     )
 

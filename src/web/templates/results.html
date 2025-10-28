@@ -19,6 +19,8 @@
     </style>
 </head>
 <body>
+{% set routine_id = filters.get('routine_id') %}
+
 <div class="toolbar">
     <a class="btn" href="/">← Zpět na vyhledávání</a>
     <div class="muted">
@@ -40,15 +42,22 @@
     {% for c in cards %}
     <article class="card">
         <div class="title">
+            {% if routine_id %}
+            <a href="/routines/{{ routine_id }}/ad/{{ c.id }}">{{ c.title }}</a>
+            {% else %}
             <a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.title }}</a>
+            {% endif %}
         </div>
         {% if c.locality %}
         <div class="muted">{{ c.locality }}</div>
         {% endif %}
         <div class="meta">
             {% if c.area %}Plocha: {{ c.area }} m²<br>{% endif %}
-            {% if c.price %}Cena: <b>{{ "{:,}".format(c.price).replace(",", " ") }}</b> Kč{% else %}Cena neuvedena{%
-            endif %}
+            {% if c.price %}
+            Cena: <b>{{ "{:,}".format(c.price).replace(",", " ") }}</b> Kč
+            {% else %}
+            Cena neuvedena
+            {% endif %}
         </div>
     </article>
     {% endfor %}
@@ -57,7 +66,7 @@
 
 <div class="pager">
     <!-- Prev -->
-    <form method="post" action="/search">
+    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
         {% for k,v in filters.items() %}
         {% if v is not none %}
         {% if v is iterable and not v is string %}
@@ -70,11 +79,12 @@
         {% endif %}
         {% endfor %}
         <input type="hidden" name="offset" value="{{ pagination.prev_offset }}">
+        <input type="hidden" name="limit" value="{{ pagination.limit }}">
         <button class="btn" {% if not pagination.has_prev %}disabled{% endif %}>‹ Předchozí</button>
     </form>
 
     <!-- Next -->
-    <form method="post" action="/search">
+    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
         {% for k,v in filters.items() %}
         {% if v is not none %}
         {% if v is iterable and not v is string %}
@@ -87,11 +97,13 @@
         {% endif %}
         {% endfor %}
         <input type="hidden" name="offset" value="{{ pagination.next_offset }}">
+        <input type="hidden" name="limit" value="{{ pagination.limit }}">
         <button class="btn" {% if not pagination.has_next %}disabled{% endif %}>Další ›</button>
     </form>
 
     <!-- Skok na offset -->
-    <form method="post" action="/search" style="margin-left:auto; display:flex; gap:8px; flex-wrap: wrap;">
+    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}"
+          style="margin-left:auto; display:flex; gap:8px; flex-wrap: wrap;">
         {% for k,v in filters.items() %}
         {% if v is not none %}
         {% if v is iterable and not v is string %}
@@ -105,6 +117,7 @@
         {% endfor %}
         <label class="muted">Offset:</label>
         <input type="number" name="offset" value="{{ pagination.offset }}" min="0" style="width:120px;">
+        <input type="hidden" name="limit" value="{{ pagination.limit }}">
         <button class="btn">Jdi</button>
     </form>
 </div>
