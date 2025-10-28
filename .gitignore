@@ -205,3 +205,19 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# --- Sreality Scraper ---
+# Local databases and routines
+data/**/*.sqlite3
+data/**/*.db
+data/routines/**/estates.sqlite3
+
+# Search snapshots
+snapshots/
+
+# Temporary files or logs
+*.log
+*.tmp
+
+# Local virtual environment (if present in project root)
+.venv/
