@@ -19,6 +19,29 @@
     </style>
 </head>
 <body>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="/admin"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🏠
+            Admin panel</a>
+        <a href="/search"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🔍
+            Vyhledávání</a>
+        <a href="/routines"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">📋
+            Rutiny</a>
+        <a href="/routine"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">＋
+            Nová rutina</a>
+    </div>
+    <div>
+        <span style="color:#555;">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <a href="/logout"
+           style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
+            se</a>
+    </div>
+</div>
+
 {% set routine_id = filters.get('routine_id') %}
 
 <div class="toolbar">

@@ -7,10 +7,21 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import httpx
+import json
+import traceback
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import time
+
+from fastapi import Depends
+
+from pytz import timezone
 
 from fastapi.responses import HTMLResponse
 import sqlite3
-from datetime import datetime
+
+from starlette.middleware.sessions import SessionMiddleware
+from passlib.hash import bcrypt
 
 from src.sreality_client import (
     build_query,
@@ -28,12 +39,16 @@ from src.routines_storage import (
     update_routine_name,
     delete_routine,
     routine_db_path,
+    update_routine_last_run,
 )
 from src.storage import (
     upsert_items,
     get_known_ids,
     create_db_if_needed,
 )
+
+from src.users_storage import init_users_db, ensure_admin, verify_user_password, get_user_by_username, create_user, \
+    list_users, delete_user, reset_password
 
 
 # --- Pomocné převody ---
@@ -68,22 +83,68 @@ def _split_keywords(description_search: Optional[str]) -> list[str]:
     return [w.strip() for w in description_search.replace(";", ",").split(",") if w.strip()]
 
 
+def is_admin(request: Request) -> bool:
+    return bool(request.session.get("is_admin"))
+
+
+def _ensure_can_access_routine(request: Request, routine: dict):
+    """
+    Admin může vše, běžný uživatel jen své rutiny.
+    Vrací RedirectResponse nebo HTMLResponse, pokud nemá přístup.
+    """
+    if not routine:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    if is_admin(request):
+        return None
+    if routine.get("user_id") != get_current_user_id(request):
+        return HTMLResponse("Přístup odepřen.", status_code=403)
+    return None
+
+
+def get_current_user(request: Request) -> Optional[str]:
+    return request.session.get("username")
+
+
+def get_current_user_id(request: Request) -> Optional[int]:
+    return request.session.get("user_id")
+
+
+def require_admin(request: Request):
+    """Redirects to /login if not logged in as admin."""
+    if not request.session.get("is_admin"):
+        return RedirectResponse("/login", status_code=303)
+
+
 def search_multiple_keywords(
         *,
         base_filters: dict,
-        description_search: Optional[str],
+        description_search: Optional[str] = None,
         fetch_all: bool = False,
 ) -> tuple[list[dict], dict]:
     """
-    Provede jedno nebo více dotazů na API podle klíčových slov a sjednotí výsledky bez duplikátů.
-    Vrací (unikátní_výsledky, pagination_info)
+    Spustí jedno nebo více vyhledávání na Sreality.cz podle klíčových slov
+    a sjednotí výsledky bez duplicit. Používá stejné filtry pro ruční i plánované rutiny.
     """
+
+    # Pokud description_search není explicitně předáno, vezmi ho z filtrů rutiny
+    if description_search is None and "description_search" in base_filters:
+        description_search = base_filters["description_search"]
+
+    # Odstraň klíče, které API nezná nebo které jsou interní
+    INVALID_KEYS = {
+        "description_search",  # zpracovává se zvlášť
+        "price_mode",  # jen interní přepínač
+        "limit", "offset",  # API má vlastní stránkování
+        "user_id",  # rutina metadata
+        "id", "name", "created_at", "last_run", "schedule"  # další meta-informace
+    }
+    base_filters = {k: v for k, v in base_filters.items() if k not in INVALID_KEYS}
+
+    # Rozdělení popisu na víc klíčových slov
     keywords = _split_keywords(description_search)
     all_results = []
     last_limit = base_filters.get("limit", 60)
     total_from_api = 0
-
-    # více dotazů = chytré vyhledávání
     multi_search = len(keywords) > 1
 
     for kw in (keywords or [None]):
@@ -101,7 +162,7 @@ def search_multiple_keywords(
         total_from_api = max(total_from_api, pag.get("total", 0))
         all_results.extend(items)
 
-    # sjednocení výsledků (bez duplicit podle hash_id)
+    # Odstranění duplicit podle hash_id
     seen = set()
     unique = []
     for r in all_results:
@@ -110,14 +171,7 @@ def search_multiple_keywords(
             unique.append(r)
             seen.add(hid)
 
-    # --- rozhodnutí, co zobrazit jako total ---
-    if multi_search:
-        # při chytrém vyhledávání chceme reálný počet všech unikátních výsledků
-        total_final = len(unique)
-    else:
-        # při běžném vyhledávání použij hodnotu z API (aby stránkování fungovalo)
-        total_final = total_from_api or len(unique)
-
+    total_final = len(unique) if multi_search else total_from_api or len(unique)
     return unique, {"total": total_final, "limit": last_limit}
 
 
@@ -129,12 +183,30 @@ app = FastAPI(title="Sreality Scraper – hledání a rutina")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+app.add_middleware(SessionMiddleware, secret_key="supersecretkey123")
+
+
+def require_login(request: Request):
+    """Dependency that redirects to /login if user is not logged in."""
+    if not request.session.get("user_id"):
+        raise RedirectResponse("/login", status_code=303)
+
 
 # =========================================
 #           STRÁNKA 1 – HLEDÁNÍ
 # =========================================
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    # Po přihlášení přesměruj rovnou na stránku vyhledávání
+    return RedirectResponse("/search", status_code=303)
+
+
+@app.get("/search", response_class=HTMLResponse)
+def search_page(request: Request):
+    if not get_current_user_id(request):
+        return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse("index.html", {"request": request})
 
 
@@ -311,7 +383,8 @@ def search(
 # =========================================
 @app.get("/routine", response_class=HTMLResponse)
 def routine_index(request: Request):
-    # formulář pro vytvoření nové rutiny
+    if not get_current_user_id(request):
+        return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse("routine.html", {"request": request})
 
 
@@ -338,6 +411,10 @@ def routines_create(
         price_to: Optional[str] = Form(None),
         price_mode: str = Form("total"),
         advert_age_to: Optional[str] = Form(None),
+
+        schedule_type: str = Form("manual"),
+        schedule_times: Optional[str] = Form(None),
+        schedule_days: Optional[str] = Form(None),
 ):
     filters = {
         "category_main_cb": _to_int(category_main_cb),
@@ -363,23 +440,75 @@ def routines_create(
         "offset": 0,
     }
 
-    routine = create_routine(name=routine_name, description=routine_description, filters=filters)
+    # --- Naplánování rutiny ---
+    schedule = None
+    if schedule_type != "manual":
+        sched = {"type": schedule_type}
+        if schedule_times:
+            sched["times"] = [t.strip() for t in schedule_times.split(",") if t.strip()]
+        if schedule_type == "weekly" and schedule_days:
+            sched["days"] = [d.strip().lower() for d in schedule_days.split(",") if d.strip()]
+        schedule = sched
+
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    routine = create_routine(
+        name=routine_name,
+        description=routine_description,
+        filters=filters,
+        user_id=uid,
+        schedule=schedule,
+    )
+
     create_db_if_needed(routine_db_path(routine["id"]))
 
+    # --- okamžité naplánování nové rutiny bez restartu ---
+    if schedule:
+        try:
+            sched = schedule
+            typ = sched.get("type")
+            times = sched.get("times", [])
+            days = sched.get("days", [])
+            for t in times:
+                hour, minute = map(int, t.split(":"))
+                if typ == "daily":
+                    scheduler.add_job(run_routine_job, "cron",
+                                      hour=hour, minute=minute,
+                                      args=[routine], name=routine["id"])
+                elif typ == "weekly" and days:
+                    for d in days:
+                        scheduler.add_job(run_routine_job, "cron",
+                                          day_of_week=d, hour=hour, minute=minute,
+                                          args=[routine], name=routine["id"])
+            print(f"[SCHED] Přidána nová rutina (bez restartu): {routine['name']} → {sched}")
+        except Exception as e:
+            print(f"[SCHED] Chyba při přidávání nové rutiny: {e}")
     return RedirectResponse(url=f"/routines/{routine['id']}", status_code=303)
 
 
 @app.get("/routines", response_class=HTMLResponse)
 def routines_list(request: Request):
-    routines = list_routines()
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    if is_admin(request):
+        routines = list_routines()  # vše
+    else:
+        routines = list_routines(user_id=uid)  # jen jeho
     return templates.TemplateResponse("routines.html", {"request": request, "routines": routines})
 
 
 @app.get("/routines/{routine_id}", response_class=HTMLResponse)
 def routines_detail(request: Request, routine_id: str):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
     routine = get_routine(routine_id)
-    if not routine:
-        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    deny = _ensure_can_access_routine(request, routine)
+    if deny: return deny
     return templates.TemplateResponse("routine_detail.html", {"request": request, "routine": routine})
 
 
@@ -401,10 +530,26 @@ def routines_update_description(routine_id: str, new_description: str = Form(...
 
 
 @app.post("/routines/{routine_id}/delete")
-def routines_delete(routine_id: str):
+def routines_delete(request: Request, routine_id: str):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    routine = get_routine(routine_id)
+    deny = _ensure_can_access_routine(request, routine)
+    if deny:
+        return deny
+
     ok = delete_routine(routine_id)
     if not ok:
         return HTMLResponse("Rutina nenalezena.", status_code=404)
+
+    # --- odstranit naplánovaný job ze scheduleru ---
+    for job in scheduler.get_jobs():
+        if job.name == routine_id:
+            scheduler.remove_job(job.id)
+            print(f"[SCHED] Job rutiny {routine_id} odebrán ze scheduleru.")
+
     return RedirectResponse(url="/routines", status_code=303)
 
 
@@ -414,15 +559,19 @@ def routines_run(
         routine_id: str,
         only_new: Optional[str] = Form(None),
 ):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
     routine = get_routine(routine_id)
-    if not routine:
-        return HTMLResponse("Rutina nenalezena.", status_code=404)
+    deny = _ensure_can_access_routine(request, routine)
+    if deny:
+        return deny
 
     f = routine["filters"]
     dbp = routine_db_path(routine_id)
     create_db_if_needed(dbp)
 
-    # --- FULL SYNC pokaždé při spuštění ---
     print(f"[SYNC] Spouštím full sync pro rutinu {routine_id}")
     base_filters_full = dict(
         category_main_cb=f.get("category_main_cb"),
@@ -446,18 +595,28 @@ def routines_run(
         offset=0,
     )
 
+    # 🟢 Stáhni aktuální inzeráty
     all_items, _ = search_multiple_keywords(
         base_filters=base_filters_full,
         description_search=f.get("description_search"),
         fetch_all=True,
     )
+
+    # 🟢 Získej známé ID inzerátů z databáze konkrétní rutiny
+    known_ids = set(get_known_ids(dbp))
+
+    # 🟢 Vyfiltruj jen nové inzeráty
+    new_items = [x for x in all_items if x.get("hash_id") and x["hash_id"] not in known_ids]
+
+    # 🟢 Ulož vše (aby se ceny aktualizovaly)
     upsert_items(all_items, dbp)
     print(f"[SYNC] Uloženo {len(all_items)} inzerátů do {dbp.name}")
 
-    # --- ZOBRAZ VŠECHNY VÝSLEDKY NAJEDNOU ---
-    cards = []
-    for r in all_items:
-        cards.append(to_card(r))
+    # 🟢 Podle volby zobraz jen nové nebo všechny
+    show_only_new = bool(only_new)
+    displayed_items = new_items if show_only_new else all_items
+
+    cards = [to_card(r) for r in displayed_items]
 
     return templates.TemplateResponse(
         "results.html",
@@ -651,3 +810,246 @@ def routine_run(
             },
         },
     )
+
+
+# =========================================
+#           ADMIN LOGIN & DASHBOARD
+# =========================================
+
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    if is_admin(request):
+        return RedirectResponse("/admin", status_code=303)
+    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+
+
+@app.post("/login", response_class=HTMLResponse)
+def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+    user = verify_user_password(username, password)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+
+    # uložit do session
+    request.session["user_id"] = user["id"]
+    request.session["username"] = user["username"]
+    request.session["is_admin"] = bool(user["is_admin"])
+
+    # redirect podle role
+    if user["is_admin"]:
+        return RedirectResponse("/admin", status_code=303)
+    else:
+        return RedirectResponse("/search", status_code=303)
+
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse("admin.html", {"request": request, "username": get_current_user(request)})
+
+
+# =========================================
+#           ADMIN – SPRÁVA UŽIVATELŮ
+# =========================================
+
+@app.get("/admin/users", response_class=HTMLResponse)
+def admin_users(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    users = list_users()
+    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
+
+
+@app.post("/admin/users/create")
+def admin_create_user(
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        admin_flag: Optional[str] = Form(None, alias="is_admin"),  # ← alias opraví jméno z HTML
+):
+    try:
+        print("[DEBUG] Session:", request.session)
+        if not is_admin(request):
+            print("[DEBUG] Not admin → redirect")
+            return RedirectResponse("/login", status_code=303)
+
+        print(f"[DEBUG] Creating user: username={username}, admin_flag={admin_flag}")
+        result = create_user(username, password, bool(admin_flag))
+        print(f"[DEBUG] Result of create_user: {result}")
+        return RedirectResponse("/admin/users", status_code=303)
+
+    except Exception as e:
+        print("[ERROR] Exception while creating user:")
+        traceback.print_exc()
+        return HTMLResponse(f"<h1>Internal Server Error</h1><pre>{e}</pre>", status_code=500)
+
+
+@app.post("/admin/users/{user_id}/delete")
+def admin_delete_user(request: Request, user_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    delete_user(user_id)
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.post("/admin/users/{user_id}/reset")
+def admin_reset_password(request: Request, user_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    reset_password(user_id, "1234")
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.post("/routines/{routine_id}/update_schedule")
+def routines_update_schedule(
+        routine_id: str,
+        schedule_type: str = Form(...),
+        schedule_times: Optional[str] = Form(None),
+        schedule_days: Optional[str] = Form(None),
+):
+    from src.routines_storage import _load_index, _save_index, get_routine
+    doc = _load_index()
+    routine = None
+    for r in doc["routines"]:
+        if r["id"] == routine_id:
+            routine = r
+            if schedule_type == "manual":
+                r["schedule"] = None
+            else:
+                sched = {"type": schedule_type}
+                if schedule_times:
+                    sched["times"] = [t.strip() for t in schedule_times.split(",") if t.strip()]
+                if schedule_type == "weekly" and schedule_days:
+                    sched["days"] = [d.strip().lower() for d in schedule_days.split(",") if d.strip()]
+                r["schedule"] = sched
+            break
+    _save_index(doc)
+
+    # === aktualizace APScheduleru ===
+    if routine:
+        # smazat staré joby stejné rutiny
+        for job in scheduler.get_jobs():
+            if job.name == routine_id:
+                scheduler.remove_job(job.id)
+
+        sched = routine.get("schedule")
+        if sched:
+            try:
+                if isinstance(sched, str) and "@" in sched:
+                    typ, t = sched.split("@")
+                    sched = {"type": typ, "times": [t]}
+                if isinstance(sched, str):
+                    sched = json.loads(sched)
+
+                typ = sched.get("type")
+                times = sched.get("times", [])
+                days = sched.get("days", [])
+                for t in times:
+                    hour, minute = map(int, t.split(":"))
+                    if typ == "daily":
+                        scheduler.add_job(
+                            run_routine_job, "cron",
+                            hour=hour, minute=minute, args=[routine],
+                            name=routine_id
+                        )
+                    elif typ == "weekly" and days:
+                        for d in days:
+                            scheduler.add_job(
+                                run_routine_job, "cron",
+                                day_of_week=d, hour=hour, minute=minute, args=[routine],
+                                name=routine_id
+                            )
+                print(f"[SCHED] Aktualizována rutina '{routine['name']}' – {sched}")
+            except Exception as e:
+                print(f"[SCHED] Chyba při registraci nové rutiny {routine['name']}: {e}")
+
+    return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
+
+
+# =========================================
+#           AUTOMATICKÉ SPUŠTĚNÍ RUTIN
+# =========================================
+
+scheduler = BackgroundScheduler(timezone=timezone("Europe/Prague"))
+scheduler.start()
+print("[SCHED] Scheduler spuštěn (globální inicializace).")
+
+
+def run_routine_job(routine):
+    print(f"[CRON] Spouštím rutinu: {routine['name']}")
+    f = routine["filters"]
+    dbp = routine_db_path(routine["id"])
+    create_db_if_needed(dbp)
+
+    # 🟢 tady odstraněno "description_search=..."
+    all_items, _ = search_multiple_keywords(
+        base_filters=f,
+        fetch_all=True,
+    )
+
+    upsert_items(all_items, dbp)
+    update_routine_last_run(routine["id"])
+    print(f"[CRON] Hotovo: {routine['name']} – {len(all_items)} inzerátů")
+
+
+@app.on_event("startup")
+def startup_all():
+    # inicializace uživatelů
+    init_users_db()
+    ensure_admin("admin", "admin")
+
+    # načtení rutin
+    routines = list_routines()
+    print(f"[STARTUP] Načítám {len(routines)} rutin pro naplánování.")
+    for r in routines:
+        sched = r.get("schedule")
+        if not sched:
+            continue
+        try:
+            if isinstance(sched, str) and "@" in sched:
+                typ, t = sched.split("@")
+                sched = {"type": typ, "times": [t]}
+            if isinstance(sched, str):
+                sched = json.loads(sched)
+
+            typ = sched.get("type")
+            times = sched.get("times", [])
+            days = sched.get("days", [])
+            for t in times:
+                hour, minute = map(int, t.split(":"))
+                if typ == "daily":
+                    scheduler.add_job(run_routine_job, "cron", hour=hour, minute=minute, args=[r], name=r["id"])
+                elif typ == "weekly" and days:
+                    for d in days:
+                        scheduler.add_job(
+                            run_routine_job,
+                            "cron",
+                            day_of_week=d,
+                            hour=hour,
+                            minute=minute,
+                            args=[r],
+                            name=r["id"],
+                        )
+            print(f"[SCHED] Přidána rutina: {r['name']} → {sched}")
+        except Exception as e:
+            print(f"[SCHED] Chyba při přidávání rutiny {r['name']}: {e}")
+
+    print(f"[SCHED] Scheduler spuštěn, jobs: {len(scheduler.get_jobs())}")
+
+    print("[SCHED] Aktivní naplánované joby:")
+    for j in scheduler.get_jobs():
+        print(f"   • {j.name} → {j.next_run_time}")
+
+
+@app.get("/debug/scheduler")
+def debug_scheduler():
+    jobs = scheduler.get_jobs()
+    return JSONResponse([
+        {"id": j.id, "name": j.name, "next_run_time": str(j.next_run_time)} for j in jobs
+    ])

@@ -27,8 +27,14 @@ def _save_index(doc: Dict[str, Any]) -> None:
     INDEX_PATH.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def list_routines() -> List[Dict[str, Any]]:
-    return _load_index().get("routines", [])
+def list_routines(user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    """
+    Vrátí seznam rutin. Pokud je zadán user_id, vrátí jen rutiny daného uživatele.
+    """
+    routines = _load_index().get("routines", [])
+    if user_id is None:
+        return routines
+    return [r for r in routines if r.get("user_id") == user_id]
 
 
 def get_routine(routine_id: str) -> Optional[Dict[str, Any]]:
@@ -38,7 +44,26 @@ def get_routine(routine_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def create_routine(*, name: str, filters: Dict[str, Any], description: Optional[str] = None) -> Dict[str, Any]:
+def update_routine_last_run(routine_id: str) -> None:
+    doc = _load_index()
+    for r in doc.get("routines", []):
+        if r["id"] == routine_id:
+            r["last_run"] = _now_iso()
+            break
+    _save_index(doc)
+
+
+def create_routine(
+        *,
+        name: str,
+        filters: Dict[str, Any],
+        description: Optional[str] = None,
+        user_id: Optional[int] = None,
+        schedule: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Vytvoří novou rutinu. Každá rutina může být vlastněna konkrétním uživatelem (user_id).
+    """
     rid = uuid.uuid4().hex[:12]
     doc = _load_index()
     routine = {
@@ -47,16 +72,16 @@ def create_routine(*, name: str, filters: Dict[str, Any], description: Optional[
         "description": description.strip() if description else "",
         "filters": filters,
         "created_at": _now_iso(),
-        "schedule": None,
+        "schedule": schedule,
+        "last_run": None,
         "emails": [],
         "active": True,
+        "user_id": user_id,
     }
     doc["routines"].append(routine)
     _save_index(doc)
 
-    rdir = DATA_DIR / rid
-    rdir.mkdir(parents=True, exist_ok=True)
-
+    (DATA_DIR / rid).mkdir(parents=True, exist_ok=True)
     return routine
 
 

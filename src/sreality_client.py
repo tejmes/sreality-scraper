@@ -137,6 +137,13 @@ def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Převádí JSON položku z API na interní 'card' objekt.
+    URL se VŽDY skládá ručně a používá naše vlastní mapy kategorií v jednotném čísle.
+    API URL a API názvy ('name': 'louky') se zcela ignorují.
+    """
+
+    # --- Lokalita pro zobrazení ---
     loc = item.get("locality", {})
     if isinstance(loc, dict):
         city = loc.get("city") or ""
@@ -145,82 +152,91 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
     else:
         loc_txt = str(loc)
 
+    # --- Plocha a cena ---
     area = item.get("estate_area") or item.get("land_area") or item.get("usable_area")
     price = item.get("price_summary_czk")
 
-    # 1) Preferovat kanonickou URL z API
-    url = None
-    links = item.get("_links", {})
-    if isinstance(links, dict):
-        self_link = (links.get("self") or {}).get("href")
-        if self_link:
-            url = "https://www.sreality.cz" + self_link
+    # --- Kategorie mapy v jednotném čísle ---
+    type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
+    main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
+    sub_map = {
+        18: "komercni",
+        19: "bydleni",
+        20: "pole",
+        21: "les",
+        22: "louka",
+        23: "zahrada",
+        24: "ostatni",
+        33: "chata",
+        35: "pamatka-jine",
+        37: "rodinny",
+        39: "vila",
+        40: "na-klic",
+        43: "chalupa",
+        44: "zemedelska-usedlost",
+        46: "rybnik",
+        48: "sad-vinice",
+        54: "vicegeneracni-dum",
+    }
 
-    # 2) Fallback – robustní složení SEO URL (včetně locality slugu)
-    if not url:
-        # Pomocné mapy
-        type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
-        main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
-        sub_map = {
-            18: "komercni", 19: "bydleni", 20: "pole", 21: "lesy", 22: "louky",
-            23: "zahrady", 24: "ostatni", 33: "chata", 35: "pamatka-jine",
-            37: "rodinny", 39: "vila", 40: "na-klic", 43: "chalupa",
-            44: "zemedelska-usedlost", 46: "rybniky", 48: "sady-vinice", 54: "vicegeneracni-dum"
-        }
+    def _val(d, default=None):
+        """Bezpečně vrátí hodnotu z dictu nebo None"""
+        if isinstance(d, dict):
+            return d.get("value", default)
+        return d or default
 
-        def _slugify(s: str) -> str:
-            import unicodedata, re
-            s = unicodedata.normalize("NFKD", s)
-            s = "".join(ch for ch in s if not unicodedata.combining(ch))
-            s = s.lower()
-            s = re.sub(r"[^a-z0-9]+", "-", s)
-            s = re.sub(r"-{2,}", "-", s).strip("-")
-            return s
+    def _slugify(s: str) -> str:
+        import unicodedata, re
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(ch for ch in s if not unicodedata.combining(ch))
+        s = s.lower()
+        s = re.sub(r"[^a-z0-9]+", "-", s)
+        s = re.sub(r"-{2,}", "-", s).strip("-")
+        return s
 
-        # Kategorie části
-        ct_val = (item.get("category_type_cb") or {}).get("value")
-        cm_val = (item.get("category_main_cb") or {}).get("value")
-        cs_val = (item.get("category_sub_cb") or {}).get("value")
-        ct = type_map.get(ct_val, "detail")
-        cm = main_map.get(cm_val, "nemovitost")
-        cs = sub_map.get(cs_val, "")
+    # --- Kategorie vždy jen z našich map (nikdy z API 'name') ---
+    ct = type_map.get(_val(item.get("category_type_cb")), "detail")
+    cm = main_map.get(_val(item.get("category_main_cb")), "nemovitost")
 
-        # Locality slug: preferuj SEO.locality, jinak slož z locality dictu
-        locality_slug = ""
-        seo = item.get("seo") or {}
-        if isinstance(seo, dict):
-            locality_slug = seo.get("locality") or ""
+    sub_id = _val(item.get("category_sub_cb"))
+    cs = sub_map.get(sub_id, "")
 
-        if not locality_slug:
-            # pokus složit ze známých polí locality
-            if isinstance(loc, dict):
-                parts_guess = []
-                # Město / městská část
-                for key in ("city", "municipality", "quarter", "ward"):
-                    val = loc.get(key)
-                    if val:
-                        parts_guess.append(str(val))
-                # Ulice – v různých datech může být 'street' nebo 'street_name'
-                for key in ("street", "street_name"):
-                    val = loc.get(key)
-                    if val:
-                        parts_guess.append(str(val))
-                if parts_guess:
-                    locality_slug = "-".join(_slugify(p) for p in parts_guess if p)
-            # poslední zoufalý pokus: někdy je locality text celé v jednom řetězci
-            if not locality_slug and isinstance(loc, str):
-                locality_slug = _slugify(loc)
+    # --- Locality slug ---
+    seo = item.get("seo") or {}
+    locality_slug = seo.get("locality") if isinstance(seo, dict) else ""
+    if not locality_slug and isinstance(loc, dict):
+        parts = []
+        for key in ("municipality", "city", "quarter", "ward", "street", "street_name"):
+            val = loc.get(key)
+            if val:
+                parts.append(_slugify(val))
+        locality_slug = "-".join(parts)
+    elif isinstance(loc, str) and not locality_slug:
+        locality_slug = _slugify(loc)
 
-        # Když se nepodaří nic zjistit, raději ponecháme „/detail/<id>“ než rozbitý slug,
-        # ale pokud aspoň něco máme, složíme plnou SEO URL.
-        hid = item.get("hash_id")
-        if locality_slug:
-            parts = [p for p in (ct, cm, cs) if p]
-            cat_path = "/".join(parts)
-            url = f"https://www.sreality.cz/detail/{cat_path}/{locality_slug}/{hid}"
-        else:
-            url = f"https://www.sreality.cz/detail/{hid}"
+    # --- Fallback plural fix (pro jistotu i na locality) ---
+    plural_fixes = {
+        "louky": "louka",
+        "zahrady": "zahrada",
+        "lesy": "les",
+        "rybniky": "rybnik",
+        "sady-vinice": "sad-vinice",
+    }
+    for wrong, correct in plural_fixes.items():
+        if locality_slug.endswith(wrong):
+            locality_slug = locality_slug.replace(wrong, correct)
+            break
 
+    # --- Složení finální URL ---
+    hid = item.get("hash_id")
+    parts = [p for p in (ct, cm, cs) if p]
+    cat_path = "/".join(parts)
+    if locality_slug:
+        url = f"https://www.sreality.cz/detail/{cat_path}/{locality_slug}/{hid}"
+    else:
+        url = f"https://www.sreality.cz/detail/{hid}"
+
+    # --- Hotovo ---
     return {
         "id": item.get("hash_id"),
         "title": item.get("advert_name") or "(bez názvu)",

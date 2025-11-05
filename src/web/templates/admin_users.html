@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <title>Správa uživatelů</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<h1>Správa uživatelů</h1>
+
+<p>
+    <a href="/admin" class="btn">← Zpět na panel</a>
+    <a href="/logout" class="btn">Odhlásit</a>
+</p>
+
+<h2>Vytvořit nového uživatele</h2>
+<form action="/admin/users/create" method="post" style="margin-bottom: 2rem;">
+    <label>Uživatelské jméno:</label>
+    <input type="text" name="username" required>
+
+    <label>Heslo:</label>
+    <input type="password" name="password" required>
+
+    <label>Admin účet:</label>
+    <input type="checkbox" name="is_admin" value="1">
+
+    <button type="submit">Vytvořit</button>
+</form>
+
+<h2>Existující uživatelé</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Uživatel</th>
+        <th>Admin</th>
+        <th>Vytvořen</th>
+        <th>Akce</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for user in users %}
+    <tr>
+        <td>{{ user.id }}</td>
+        <td>{{ user.username }}</td>
+        <td>{{ "Ano" if user.is_admin else "Ne" }}</td>
+        <td>{{ user.created_at }}</td>
+        <td>
+            <form action="/admin/users/{{ user.id }}/delete" method="post" style="display:inline;">
+                <button type="submit" onclick="return confirm('Opravdu smazat?')">Smazat</button>
+            </form>
+            <form action="/admin/users/{{ user.id }}/reset" method="post" style="display:inline;">
+                <button type="submit" onclick="return confirm('Resetovat heslo?')">Reset hesla</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>

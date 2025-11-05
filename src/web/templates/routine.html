@@ -42,11 +42,26 @@
     </style>
 </head>
 <body>
-<div class="toolbar">
-    <h1>Vytvořit rutinu</h1>
-    <div style="display:flex; gap:.5rem;">
-        <a href="/">← Zpět na vyhledávání</a>
-        <a href="/routines">📋 Seznam rutin</a>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="/admin"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🏠
+            Admin panel</a>
+        <a href="/search"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🔍
+            Vyhledávání</a>
+        <a href="/routines"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">📋
+            Rutiny</a>
+        <a href="/routine"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">＋
+            Nová rutina</a>
+    </div>
+    <div>
+        <span style="color:#555;">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <a href="/logout"
+           style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
+            se</a>
     </div>
 </div>
 
@@ -60,6 +75,37 @@
         <textarea id="routine_description" name="routine_description" rows="3"
                   placeholder="Např. Sleduj stavební pozemky do 3 mil. Kč ve Středočeském kraji"></textarea>
     </fieldset>
+
+    <fieldset>
+        <legend>Plán spouštění</legend>
+
+        <label for="schedule_type">Typ</label>
+        <select id="schedule_type" name="schedule_type" onchange="toggleScheduleOptions()">
+            <option value="manual" selected>Pouze ručně</option>
+            <option value="daily">Denně</option>
+            <option value="weekly">Týdně</option>
+        </select>
+
+        <div id="time-container" style="margin-top:8px;">
+            <label for="schedule_times">Časy spuštění (odděl čárkou, např. 08:00,20:00)</label>
+            <input id="schedule_times" name="schedule_times" type="text" placeholder="např. 08:00,20:00" value="08:00">
+        </div>
+
+        <div id="day-container" style="margin-top:8px; display:none;">
+            <label for="schedule_days">Dny (mon,tue,wed,thu,fri,sat,sun)</label>
+            <input id="schedule_days" name="schedule_days" type="text" placeholder="např. mon,wed,fri"
+                   value="mon,wed,fri">
+        </div>
+    </fieldset>
+
+    <script>
+        function toggleScheduleOptions() {
+            const val = document.getElementById('schedule_type').value;
+            document.getElementById('time-container').style.display = val === 'manual' ? 'none' : 'block';
+            document.getElementById('day-container').style.display = val === 'weekly' ? 'block' : 'none';
+        }
+        window.addEventListener('load', toggleScheduleOptions);
+    </script>
 
 
     <fieldset>
