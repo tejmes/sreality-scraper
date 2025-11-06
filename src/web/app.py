@@ -612,6 +612,8 @@ def routines_run(
     upsert_items(all_items, dbp)
     print(f"[SYNC] Uloženo {len(all_items)} inzerátů do {dbp.name}")
 
+    update_routine_last_run(routine_id)
+
     # 🟢 Podle volby zobraz jen nové nebo všechny
     show_only_new = bool(only_new)
     displayed_items = new_items if show_only_new else all_items
@@ -982,6 +984,9 @@ print("[SCHED] Scheduler spuštěn (globální inicializace).")
 
 
 def run_routine_job(routine):
+    import os
+    print("[CRON] PID:", os.getpid())
+
     print(f"[CRON] Spouštím rutinu: {routine['name']}")
     f = routine["filters"]
     dbp = routine_db_path(routine["id"])

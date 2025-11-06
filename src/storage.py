@@ -1,8 +1,9 @@
-from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
+import re
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = ROOT / "data" / "estates.sqlite3"
@@ -10,7 +11,8 @@ DEFAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    now = datetime.now(ZoneInfo("Europe/Prague"))
+    return now.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def create_db_if_needed(db_path: Path | str = DEFAULT_DB_PATH) -> None:
@@ -63,13 +65,19 @@ def _pick(d: Dict[str, Any], *keys: str, default=None):
 
 def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
     loc = item.get("locality") or {}
-    price_czk = _pick(item, "price_summary_czk", "price_czk", "price", default=None)
-    price_unit_cb = item.get("price_unit_cb") or {}
-    area = _pick(item, "estate_area", "living_area", "land_area", "usable_area", "area", default=None)
+
+    price_raw = _pick(item, "price_summary_czk", "price_czk", "price", default=None)
+    price_czk = price_raw.get("value") if isinstance(price_raw, dict) else price_raw
+
+    advert_name = item.get("advert_name") or ""
+
+    clean_name = advert_name.replace("\xa0", " ").replace("\u202f", " ")
+    match = re.search(r"(\d+)", clean_name)
+    area = int(match.group(1)) if match else None
 
     return {
         "hash_id": item.get("hash_id"),
-        "advert_name": _pick(item, "advert_name", "name", "title", default=None),
+        "advert_name": advert_name,
         "category_main": (item.get("category_main_cb") or {}).get("value"),
         "category_sub": (item.get("category_sub_cb") or {}).get("value"),
         "category_type": (item.get("category_type_cb") or {}).get("value"),
@@ -81,8 +89,8 @@ def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
         "gps_lon": loc.get("gps_lon"),
         "area_m2": area,
         "price_czk": price_czk,
-        "price_czk_m2": _pick(item, "price_summary_czk_m2", "price_czk_m2", default=None),
-        "price_unit_value": price_unit_cb.get("value"),
+        "price_czk_m2": None,
+        "price_unit_value": (item.get("price_unit_cb") or {}).get("value"),
     }
 
 

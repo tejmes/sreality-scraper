@@ -1,9 +1,8 @@
-from __future__ import annotations
 import os
 import random
 
-# Seznam běžných UA (aktuální generace prohlížečů).
-# Volíme kombinaci Windows/Mac + Chrome/Firefox/Edge, ať to není jednotvárné.
+# Seznam běžných UA.
+# Volíme kombinaci Windows/Mac + Chrome/Firefox/Edge.
 _BROWSER_UAS = [
     # Chrome (Windows 10/11)
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -21,8 +20,8 @@ _BROWSER_UAS = [
 
 def _pick_user_agent() -> str:
     """
-    Vybere UA takto (v pořadí):
-    1) pokud je nastavena proměnná USER_AGENT, použij ji (má absolutní přednost)
+    Vybere UA:
+    1) pokud je nastavena proměnná USER_AGENT, použij ji
     2) jinak náhodně vyber z běžných prohlížečových UA
     """
     override = os.getenv("USER_AGENT")

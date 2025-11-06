@@ -1,9 +1,9 @@
-from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import json
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data" / "routines"
@@ -13,7 +13,8 @@ INDEX_PATH = DATA_DIR / "index.json"
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    now = datetime.now(ZoneInfo("Europe/Prague"))
+    return now.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _load_index() -> Dict[str, Any]:
@@ -58,11 +59,11 @@ def create_routine(
         name: str,
         filters: Dict[str, Any],
         description: Optional[str] = None,
-        user_id: Optional[int] = None,
+        user_id: Optional[int],
         schedule: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Vytvoří novou rutinu. Každá rutina může být vlastněna konkrétním uživatelem (user_id).
+    Vytvoří novou rutinu. Každá rutina je vlastněna konkrétním uživatelem (user_id).
     """
     rid = uuid.uuid4().hex[:12]
     doc = _load_index()
@@ -90,7 +91,7 @@ def update_routine_name(routine_id: str, new_name: str) -> bool:
     changed = False
     for r in doc.get("routines", []):
         if r["id"] == routine_id:
-            r["name"] = new_name.strip() or r["name"]
+            r["name"] = new_name.strip()
             changed = True
             break
     if changed:

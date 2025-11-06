@@ -1,10 +1,10 @@
-from __future__ import annotations
 from typing import Any, Dict, Optional, List, Iterable
 from urllib.parse import urlencode
 from pathlib import Path
 import json
 import httpx
 import time
+import re
 
 from src.headers import build_browser_like_headers
 
@@ -84,7 +84,7 @@ def fetch_page(url: str) -> Dict[str, Any]:
         return resp.json()
 
 
-def fetch_all_pages(base_url: str, max_pages: int = 1000) -> list[dict]:
+def fetch_all_pages(base_url: str, max_pages: int = 10000) -> list[dict]:
     all_items: list[dict] = []
     offset = 0
     limit = 60
@@ -93,7 +93,6 @@ def fetch_all_pages(base_url: str, max_pages: int = 1000) -> list[dict]:
 
     print(f"[START] Full sync z {base_url}")
 
-    import re
     base_url = re.sub(r"(&limit=\d+)", "", base_url)
     base_url = re.sub(r"(&offset=\d+)", "", base_url)
 
@@ -136,15 +135,12 @@ def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     return results
 
 
-def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
+def to_card(item: dict[str, any]) -> dict[str, any]:
     """
     Převádí JSON položku z API na interní 'card' objekt.
-    URL se VŽDY skládá ručně a používá naše vlastní mapy kategorií v jednotném čísle.
-    API URL a API názvy ('name': 'louky') se zcela ignorují.
     """
-
     # --- Lokalita pro zobrazení ---
-    loc = item.get("locality", {})
+    loc = item.get("locality") or {}
     if isinstance(loc, dict):
         city = loc.get("city") or ""
         region = loc.get("region") or ""
@@ -156,7 +152,7 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
     area = item.get("estate_area") or item.get("land_area") or item.get("usable_area")
     price = item.get("price_summary_czk")
 
-    # --- Kategorie mapy v jednotném čísle ---
+    # --- Kategorie mapy ---
     type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
     main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
     sub_map = {
@@ -179,11 +175,21 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
         54: "vicegeneracni-dum",
     }
 
-    def _val(d, default=None):
-        """Bezpečně vrátí hodnotu z dictu nebo None"""
-        if isinstance(d, dict):
-            return d.get("value", default)
-        return d or default
+    def _val(cb):
+        """Bezpečně vrátí číselnou hodnotu z dictu (i jako string)."""
+        if isinstance(cb, dict):
+            val = cb.get("value")
+            # pokud je číslo, vrať ho
+            if isinstance(val, int):
+                return val
+            # pokud je string s číslem, převeď
+            if isinstance(val, str) and val.isdigit():
+                return int(val)
+            return None
+        # pokud je string s číslem
+        if isinstance(cb, str) and cb.isdigit():
+            return int(cb)
+        return cb
 
     def _slugify(s: str) -> str:
         import unicodedata, re
@@ -191,41 +197,52 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
         s = "".join(ch for ch in s if not unicodedata.combining(ch))
         s = s.lower()
         s = re.sub(r"[^a-z0-9]+", "-", s)
-        s = re.sub(r"-{2,}", "-", s).strip("-")
+        return s.strip("-")
+
+    # --- Oprava množného čísla ---
+    def _singularize(s: str) -> str:
+        if not s:
+            return s
+        s = s.lower()
+        fixes = {
+            "louky": "louka",
+            "zahrady": "zahrada",
+            "lesy": "les",
+            "rybniky": "rybnik",
+            "sady-vinice": "sad-vinice",
+        }
+        for wrong, correct in fixes.items():
+            s = s.replace(f"/{wrong}/", f"/{correct}/")
+            if s.startswith(wrong + "/"):
+                s = correct + s[len(wrong):]
+            if s.endswith("/" + wrong):
+                s = s[: -len(wrong)] + correct
+            if s == wrong:
+                s = correct
         return s
 
-    # --- Kategorie vždy jen z našich map (nikdy z API 'name') ---
+    # --- Kategorie ---
     ct = type_map.get(_val(item.get("category_type_cb")), "detail")
     cm = main_map.get(_val(item.get("category_main_cb")), "nemovitost")
+    sub_val = _val(item.get("category_sub_cb"))
+    cs = sub_map.get(sub_val, "")
+    # pokud sub_map nevrátí nic, zkus singularizovat textový název
+    if not cs and isinstance(item.get("category_sub_cb"), dict):
+        name = (item.get("category_sub_cb") or {}).get("name", "")
+        cs = _singularize(name.lower())
+    cs = _singularize(cs)
 
-    sub_id = _val(item.get("category_sub_cb"))
-    cs = sub_map.get(sub_id, "")
-
-    # --- Locality slug ---
+    # --- Lokalita slug (API ji někdy vrací množně, např. 'zahrady/skvorec') ---
     seo = item.get("seo") or {}
     locality_slug = seo.get("locality") if isinstance(seo, dict) else ""
     if not locality_slug and isinstance(loc, dict):
-        parts = []
-        for key in ("municipality", "city", "quarter", "ward", "street", "street_name"):
-            val = loc.get(key)
-            if val:
-                parts.append(_slugify(val))
-        locality_slug = "-".join(parts)
+        parts = [loc.get(k) for k in ("municipality", "city", "quarter", "ward") if loc.get(k)]
+        locality_slug = "-".join(_slugify(x) for x in parts if x)
     elif isinstance(loc, str) and not locality_slug:
         locality_slug = _slugify(loc)
 
-    # --- Fallback plural fix (pro jistotu i na locality) ---
-    plural_fixes = {
-        "louky": "louka",
-        "zahrady": "zahrada",
-        "lesy": "les",
-        "rybniky": "rybnik",
-        "sady-vinice": "sad-vinice",
-    }
-    for wrong, correct in plural_fixes.items():
-        if locality_slug.endswith(wrong):
-            locality_slug = locality_slug.replace(wrong, correct)
-            break
+    # 💥 Oprav i pluralitu v seo.locality
+    locality_slug = _singularize(locality_slug)
 
     # --- Složení finální URL ---
     hid = item.get("hash_id")
@@ -234,9 +251,15 @@ def to_card(item: Dict[str, Any]) -> Dict[str, Any]:
     if locality_slug:
         url = f"https://www.sreality.cz/detail/{cat_path}/{locality_slug}/{hid}"
     else:
-        url = f"https://www.sreality.cz/detail/{hid}"
+        url = f"https://www.sreality.cz/detail/{cat_path}/{hid}"
 
-    # --- Hotovo ---
+    # 💥 Finální jistota: převeď pluralitu v celé URL
+    url = _singularize(url)
+
+    print("[DEBUG] → OUTPUT URL:", url)
+    print("[DEBUG] =======================\n")
+
+    # --- Výstup ---
     return {
         "id": item.get("hash_id"),
         "title": item.get("advert_name") or "(bez názvu)",

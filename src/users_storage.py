@@ -1,13 +1,12 @@
-from __future__ import annotations
-
 import sqlite3
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from passlib.hash import bcrypt
+import traceback
 
-# Umístění DB (můžeš změnit dle struktury projektu)
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_DB = DATA_DIR / "users.sqlite3"
@@ -48,13 +47,12 @@ def create_user(
     Vytvoří uživatele s bcrypt hashem.
     Vyhazuje sqlite3.IntegrityError při duplicitním username.
     """
-    import traceback
     try:
         if not username or not password:
             raise ValueError("username and password are required")
 
         password_hash = bcrypt.hash(password)
-        now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        now = datetime.now(ZoneInfo("Europe/Prague")).strftime("%Y-%m-%d %H:%M:%S")
 
         con = _connect(db_path)
         cur = con.cursor()
@@ -68,7 +66,6 @@ def create_user(
         con.commit()
         user_id = cur.lastrowid
         con.close()
-        print(f"[DEBUG] User '{username}' created successfully (admin={is_admin})")
         return {"id": user_id, "username": username, "is_admin": is_admin, "created_at": now}
 
     except Exception as e:
