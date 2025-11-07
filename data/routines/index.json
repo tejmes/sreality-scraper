@@ -1,14 +1,16 @@
 {
   "routines": [
     {
-      "id": "c1600c97d61d",
+      "id": "e95250289175",
       "name": "Test",
       "description": "",
       "filters": {
         "category_main_cb": 3,
         "category_type_cb": 1,
         "category_sub_cb": [
-          18
+          21,
+          22,
+          23
         ],
         "locality_country_id": 112,
         "locality_region_id": 9,
@@ -29,9 +31,9 @@
         "limit": 60,
         "offset": 0
       },
-      "created_at": "2025-11-06 14:51:44",
+      "created_at": "2025-11-07 12:48:33",
       "schedule": null,
-      "last_run": "2025-11-06 14:51:47",
+      "last_run": "2025-11-07 12:48:49",
       "emails": [],
       "active": true,
       "user_id": 1

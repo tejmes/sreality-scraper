@@ -36,8 +36,16 @@
         <a href="/logout"
            style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
             se</a>
+        <a href="/user/reset_password"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
+            🔑 Změnit heslo
+        </a>
     </div>
 </div>
+
+<form method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen">
+    <button type="submit" class="btn">Označit jako viděné</button>
+</form>
 
 <div class="toolbar" style="margin-top: 2rem;">
     <a href="{{ sreality_url }}" target="_blank" title="Otevřít na Sreality.cz">🌐 Otevřít na Sreality.cz</a>

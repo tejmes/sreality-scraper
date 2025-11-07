@@ -88,6 +88,10 @@
         <a href="/logout"
            style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
             se</a>
+        <a href="/user/reset_password"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
+            🔑 Změnit heslo
+        </a>
     </div>
 </div>
 
@@ -107,6 +111,7 @@
                 <button type="submit" id="run-btn">Spustit teď</button>
             </form>
         </div>
+        <a class="btn" href="/routines/{{ routine.id }}/new">🆕 Zobrazit nové inzeráty</a>
         <form class="inline" action="/routines/{{ routine.id }}/delete" method="post"
               onsubmit="return confirm('Opravdu smazat tuto rutinu včetně jejích dat?');">
             <button class="danger" type="submit">Smazat rutinu</button>

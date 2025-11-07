@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -9,19 +7,13 @@ from fastapi.templating import Jinja2Templates
 import httpx
 import json
 import traceback
-
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import time
-
-from fastapi import Depends
-
 from pytz import timezone
-
-from fastapi.responses import HTMLResponse
 import sqlite3
-
 from starlette.middleware.sessions import SessionMiddleware
-from passlib.hash import bcrypt
+from dotenv import load_dotenv
+import os
+from datetime import datetime
 
 from src.sreality_client import (
     build_query,
@@ -30,7 +22,7 @@ from src.sreality_client import (
     extract_items,
     extract_pagination,
     to_card,
-    save_json,
+    save_json
 )
 from src.routines_storage import (
     list_routines,
@@ -39,16 +31,52 @@ from src.routines_storage import (
     update_routine_name,
     delete_routine,
     routine_db_path,
-    update_routine_last_run,
+    update_routine_last_run
 )
 from src.storage import (
     upsert_items,
     get_known_ids,
     create_db_if_needed,
+    ensure_new_ads_table,
+    mark_new_ads
 )
 
-from src.users_storage import init_users_db, ensure_admin, verify_user_password, get_user_by_username, create_user, \
-    list_users, delete_user, reset_password
+from src.users_storage import (
+    init_users_db,
+    ensure_admin,
+    get_user_by_username,
+    verify_user_password,
+    create_user,
+    list_users,
+    delete_user,
+    reset_password
+)
+
+# === Načtení .env souboru ===
+ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env")
+
+# === Načtení .env souboru ===
+ROOT = Path(__file__).resolve().parent
+env_path = ROOT / ".env"
+
+if not env_path.exists():
+    raise RuntimeError(f"❌ Soubor .env nebyl nalezen v {env_path}")
+
+load_dotenv(env_path)
+
+
+def require_env(var_name: str) -> str:
+    value = os.getenv(var_name)
+    if not value:
+        raise RuntimeError(f"❌ Chybí proměnná prostředí: {var_name}")
+    return value
+
+
+SECRET_KEY = require_env("SECRET_KEY")
+ADMIN_USERNAME = require_env("ADMIN_USERNAME")
+ADMIN_PASSWORD = require_env("ADMIN_PASSWORD")
+ENVIRONMENT = os.getenv("ENV", "production")
 
 
 # --- Pomocné převody ---
@@ -176,14 +204,11 @@ def search_multiple_keywords(
 
 
 # --- FastAPI a šablony ---
-ROOT = Path(__file__).resolve().parent
-TEMPLATES_DIR = ROOT / "templates"
-
 app = FastAPI(title="Sreality Scraper – hledání a rutina")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates = Jinja2Templates(directory=str(ROOT / "templates"))
 
-app.add_middleware(SessionMiddleware, secret_key="supersecretkey123")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 def require_login(request: Request):
@@ -495,10 +520,23 @@ def routines_list(request: Request):
         return RedirectResponse("/login", status_code=303)
 
     if is_admin(request):
-        routines = list_routines()  # vše
+        routines = list_routines()
+        # Načteme mapu {user_id: username}
+        users = {u["id"]: u["username"] for u in list_users()}
+        # Doplníme autora
+        for r in routines:
+            r["author_name"] = users.get(r.get("user_id"), "?")
     else:
-        routines = list_routines(user_id=uid)  # jen jeho
-    return templates.TemplateResponse("routines.html", {"request": request, "routines": routines})
+        routines = list_routines(user_id=uid)
+
+    return templates.TemplateResponse(
+        "routines.html",
+        {
+            "request": request,
+            "routines": routines,
+            "is_admin": is_admin(request),
+        },
+    )
 
 
 @app.get("/routines/{routine_id}", response_class=HTMLResponse)
@@ -607,6 +645,8 @@ def routines_run(
 
     # 🟢 Vyfiltruj jen nové inzeráty
     new_items = [x for x in all_items if x.get("hash_id") and x["hash_id"] not in known_ids]
+
+    mark_new_ads(new_items, dbp)
 
     # 🟢 Ulož vše (aby se ceny aktualizovaly)
     upsert_items(all_items, dbp)
@@ -849,6 +889,54 @@ def logout(request: Request):
     return RedirectResponse("/", status_code=303)
 
 
+@app.get("/user/reset_password", response_class=HTMLResponse)
+def user_reset_password_form(request: Request):
+    """Zobrazí formulář pro změnu hesla přihlášeného uživatele."""
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    return templates.TemplateResponse("user_reset_password.html", {"request": request, "error": None})
+
+
+@app.post("/user/reset_password", response_class=HTMLResponse)
+def user_reset_password_submit(
+        request: Request,
+        old_password: str = Form(...),
+        new_password: str = Form(...),
+        confirm_password: str = Form(...),
+):
+    """Změna hesla pro aktuálně přihlášeného uživatele."""
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    user = get_user_by_username(get_current_user(request))
+    if not user:
+        return HTMLResponse("Uživatel nenalezen.", status_code=404)
+
+    # 1️⃣ Ověření starého hesla
+    if not verify_user_password(user["username"], old_password):
+        return templates.TemplateResponse(
+            "user_reset_password.html",
+            {"request": request, "error": "Původní heslo je nesprávné."},
+        )
+
+    # 2️⃣ Ověření nového hesla
+    if new_password != confirm_password:
+        return templates.TemplateResponse(
+            "user_reset_password.html",
+            {"request": request, "error": "Nová hesla se neshodují."},
+        )
+
+    # 3️⃣ Změna v DB
+    reset_password(uid, new_password)
+    return templates.TemplateResponse(
+        "user_reset_password.html",
+        {"request": request, "error": "✅ Heslo bylo úspěšně změněno."},
+    )
+
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     if not is_admin(request):
@@ -992,22 +1080,30 @@ def run_routine_job(routine):
     dbp = routine_db_path(routine["id"])
     create_db_if_needed(dbp)
 
-    # 🟢 tady odstraněno "description_search=..."
     all_items, _ = search_multiple_keywords(
         base_filters=f,
         fetch_all=True,
     )
 
+    # 🟢 Nejprve zjistíme známé ID
+    known_ids = set(get_known_ids(dbp))
+
+    # 🟢 Uložíme všechny inzeráty (včetně aktualizací)
     upsert_items(all_items, dbp)
+
+    # 🟢 Zjistíme které jsou nové a uložíme do new_estates
+    new_items = [x for x in all_items if x.get("hash_id") and x["hash_id"] not in known_ids]
+    mark_new_ads(new_items, dbp)
+
     update_routine_last_run(routine["id"])
-    print(f"[CRON] Hotovo: {routine['name']} – {len(all_items)} inzerátů")
+    print(f"[CRON] Hotovo: {routine['name']} – {len(all_items)} inzerátů, nových {len(new_items)}")
 
 
 @app.on_event("startup")
 def startup_all():
     # inicializace uživatelů
     init_users_db()
-    ensure_admin("admin", "admin")
+    ensure_admin(ADMIN_USERNAME, ADMIN_PASSWORD)
 
     # načtení rutin
     routines = list_routines()
@@ -1058,3 +1154,80 @@ def debug_scheduler():
     return JSONResponse([
         {"id": j.id, "name": j.name, "next_run_time": str(j.next_run_time)} for j in jobs
     ])
+
+
+@app.post("/routines/{routine_id}/mark_all_seen")
+def mark_all_seen(request: Request, routine_id: str):
+    """Označí všechny nové inzeráty v dané rutině jako zhlédnuté."""
+    db_path = routine_db_path(routine_id)
+    ensure_new_ads_table(db_path)
+
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("UPDATE new_estates SET seen = 1;")
+    con.commit()
+    con.close()
+
+    return RedirectResponse(url=f"/routines/{routine_id}/new", status_code=303)
+
+
+@app.get("/routines/{routine_id}/new", response_class=HTMLResponse)
+def routines_new(request: Request, routine_id: str):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+    routine = get_routine(routine_id)
+    deny = _ensure_can_access_routine(request, routine)
+    if deny: return deny
+
+    db_path = routine_db_path(routine_id)
+    ensure_new_ads_table(db_path)
+
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("""
+        SELECT e.*
+        FROM estates e
+        JOIN new_estates n ON e.hash_id = n.hash_id
+        WHERE n.seen = 0
+        ORDER BY n.first_detected DESC
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+
+    cards = [to_card(r) for r in rows]
+    return templates.TemplateResponse("results.html", {
+        "request": request,
+        "items": rows,
+        "cards": cards,
+        "pagination": {"total": len(rows), "limit": 0, "offset": 0, "has_prev": False, "has_next": False},
+        "filters": {"routine_id": routine_id, "only_new": True},
+    })
+
+
+@app.post("/routines/{routine_id}/ad/{hash_id}/mark_seen")
+def mark_seen(request: Request, routine_id: str, hash_id: int):
+    db_path = routine_db_path(routine_id)
+    ensure_new_ads_table(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("UPDATE new_estates SET seen = 1 WHERE hash_id = ?", (hash_id,))
+    con.commit()
+    con.close()
+    return RedirectResponse(url=f"/routines/{routine_id}/new", status_code=303)
+
+
+@app.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password_custom(request: Request, user_id: int, new_password: str = Form(...)):
+    """Admin ručně nastaví nové heslo uživateli přes JS prompt."""
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    reset_password(user_id, new_password)
+    return RedirectResponse("/admin/users", status_code=303)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "time": datetime.utcnow().isoformat(), "env": ENVIRONMENT}

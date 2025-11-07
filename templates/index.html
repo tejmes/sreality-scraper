@@ -2,42 +2,124 @@
 <html lang="cs">
 <head>
     <meta charset="utf-8"/>
-    <title>Rutina – vytvoření</title>
+    <title>Sreality – jednoduché vyhledávání</title>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <style>
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin: 2rem; }
-        form { display: grid; gap: 1rem; max-width: 900px; }
-        fieldset { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
-        legend { font-weight: 600; }
-        label { display:block; margin-bottom:.25rem; font-size:.95rem; }
-        input, select { width:100%; padding:.5rem .6rem; border:1px solid #ccc; border-radius:6px; }
-        .row { display:grid; gap:1rem; grid-template-columns: repeat(3, 1fr); }
-        .row-2 { display:grid; gap:1rem; grid-template-columns: repeat(2, 1fr); }
-        button { padding:.7rem 1rem; border:0; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; }
-        button:hover { background:#0b5ed7; }
-        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
-        .toolbar a:hover { background:#d1d5db; }
-        .checkbox-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:4px 12px; margin-top:8px; }
-        .checkbox-grid label { display:inline-flex; align-items:center; gap:4px; font-size:.95rem; line-height:1.2; cursor:pointer; white-space:nowrap; }
-        .smart-search { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px; border:1px solid #ccc; border-radius:6px; background:#fff; }
-        .smart-search .tag { background:#5a6478; color:#fff; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; font-size:.9rem; }
-        .smart-search .tag span { margin-left:6px; cursor:pointer; font-weight:bold; }
-        .smart-search input[type="text"] { border:none; outline:none; flex:1; min-width:120px; font-size:.95rem; }
-        textarea {
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 2rem;
+        }
+        form {
+            display: grid;
+            gap: 1rem;
+            max-width: 900px;
+        }
+        fieldset {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        legend {
+            font-weight: 600;
+        }
+        label {
+            display: block;
+            margin-bottom: .25rem;
+            font-size: .95rem;
+        }
+        input, select {
             width: 100%;
-            padding: .6rem .7rem;
+            padding: .5rem .6rem;
             border: 1px solid #ccc;
             border-radius: 6px;
-            font-size: .95rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 90px;
         }
-        textarea:focus {
+        .row {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .row-2 {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(2, 1fr);
+        }
+        button {
+            padding: .7rem 1rem;
+            border: 0;
+            border-radius: 8px;
+            background: #0d6efd;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0b5ed7;
+        }
+        small { color: #666; }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px 12px;
+            margin-top: 8px;
+        }
+        .checkbox-grid label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.95rem;
+            line-height: 1.2;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .checkbox-grid input[type="checkbox"] {
+            margin: 0;
+            transform: scale(1.1);
+        }
+        .toolbar {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom: 1rem;
+        }
+        .toolbar a {
+            background:#e5e7eb;
+            padding: .5rem 1rem;
+            border-radius:8px;
+            color:#111;
+            text-decoration:none;
+            font-weight:500;
+        }
+        .toolbar a:hover { background:#d1d5db; }
+        .smart-search {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .smart-search .tag {
+            background: #5a6478;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .smart-search .tag span {
+            margin-left: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .smart-search input[type="text"] {
+            border: none;
             outline: none;
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+            flex: 1;
+            min-width: 120px;
+            font-size: 0.95rem;
         }
     </style>
 </head>
@@ -62,52 +144,18 @@
         <a href="/logout"
            style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
             se</a>
+        <a href="/user/reset_password"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
+            🔑 Změnit heslo
+        </a>
     </div>
 </div>
 
-<form action="/routines/create" method="post">
-    <fieldset>
-        <legend>Základ</legend>
-        <label for="routine_name">Název rutiny</label>
-        <input id="routine_name" name="routine_name" type="text" placeholder="Např. Pozemky Praha východ" required>
+<div class="toolbar">
+    <h1>Sreality – vyhledávání (v1 API)</h1>
+</div>
 
-        <label for="routine_description" style="margin-top:.8rem;">Popis rutiny</label>
-        <textarea id="routine_description" name="routine_description" rows="3"
-                  placeholder="Např. Sleduj stavební pozemky do 3 mil. Kč ve Středočeském kraji"></textarea>
-    </fieldset>
-
-    <fieldset>
-        <legend>Plán spouštění</legend>
-
-        <label for="schedule_type">Typ</label>
-        <select id="schedule_type" name="schedule_type" onchange="toggleScheduleOptions()">
-            <option value="manual" selected>Pouze ručně</option>
-            <option value="daily">Denně</option>
-            <option value="weekly">Týdně</option>
-        </select>
-
-        <div id="time-container" style="margin-top:8px;">
-            <label for="schedule_times">Časy spuštění (odděl čárkou, např. 08:00,20:00)</label>
-            <input id="schedule_times" name="schedule_times" type="text" placeholder="např. 08:00,20:00" value="08:00">
-        </div>
-
-        <div id="day-container" style="margin-top:8px; display:none;">
-            <label for="schedule_days">Dny (mon,tue,wed,thu,fri,sat,sun)</label>
-            <input id="schedule_days" name="schedule_days" type="text" placeholder="např. mon,wed,fri"
-                   value="mon,wed,fri">
-        </div>
-    </fieldset>
-
-    <script>
-        function toggleScheduleOptions() {
-            const val = document.getElementById('schedule_type').value;
-            document.getElementById('time-container').style.display = val === 'manual' ? 'none' : 'block';
-            document.getElementById('day-container').style.display = val === 'weekly' ? 'block' : 'none';
-        }
-        window.addEventListener('load', toggleScheduleOptions);
-    </script>
-
-
+<form action="/search" method="post">
     <fieldset>
         <legend>Kategorie</legend>
         <div class="row">
@@ -188,9 +236,23 @@
                        autocomplete="off">
                 <input type="hidden" id="locality_entity_type" name="locality_entity_type">
                 <input type="hidden" id="locality_entity_id" name="locality_entity_id">
-                <ul id="suggestions"
-                    style="list-style:none;margin:0;padding:0;position:absolute;width:100%;background:white;border:1px solid #ccc;border-top:none;z-index:1000;display:none;max-height:200px;overflow-y:auto;box-shadow:0 2px 6px rgba(0,0,0,0.1);"></ul>
+                <ul id="suggestions" style="
+                    list-style:none;
+                    margin:0;
+                    padding:0;
+                    position:absolute;
+                    width:100%;
+                    background:white;
+                    border:1px solid #ccc;
+                    border-top:none;
+                    z-index:1000;
+                    display:none;
+                    max-height:200px;
+                    overflow-y:auto;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+                "></ul>
             </div>
+
             <div>
                 <label for="locality_radius">Poloměr (km)</label>
                 <input id="locality_radius" name="locality_radius" type="number" step="0.1" placeholder="např. 5">
@@ -228,7 +290,7 @@
                 <input id="estate_area_to" name="estate_area_to" type="number">
             </div>
             <div>
-                <label for="description_search">Text (chytré vyhledávání)</label>
+                <label for="description_search">Chytré vyhledávání</label>
                 <div id="smart-search" class="smart-search">
                     <input type="text" id="keyword-input" placeholder="Zadejte klíčové slovo a stiskněte Enter">
                     <input type="hidden" name="description_search" id="description_search">
@@ -245,16 +307,28 @@
         </div>
     </fieldset>
 
+    <fieldset>
+        <legend>Stránkování</legend>
+        <div class="row-2">
+            <div>
+                <label for="limit">Limit</label>
+                <input id="limit" name="limit" type="number" value="60">
+            </div>
+            <div>
+                <label for="offset">Offset</label>
+                <input id="offset" name="offset" type="number" value="0">
+            </div>
+        </div>
+    </fieldset>
+
     <div style="display:flex; gap:1rem;">
-        <button type="submit">Vytvořit rutinu</button>
-        <a href="/routines"
-           style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět
-            na seznam rutin</a>
+        <button type="submit">Vyhledat</button>
+        <button type="button" id="reset-filters" style="background:#6b7280;">Vymazat</button>
     </div>
 </form>
 
 <script>
-    // autocomplete
+    /* =============== AUTOCOMPLETE ADRESA ================== */
     const input = document.getElementById("locality_search_name");
     const list = document.getElementById("suggestions");
     const hiddenType = document.getElementById("locality_entity_type");
@@ -266,14 +340,22 @@
         clearTimeout(timeout);
         hiddenType.value = "";
         hiddenId.value = "";
-        if (q.length < 2) { list.style.display = "none"; return; }
+        if (q.length < 2) {
+            list.style.display = "none";
+            return;
+        }
         timeout = setTimeout(async () => {
             const res = await fetch(`/autocomplete?q=${encodeURIComponent(q)}`);
             const data = await res.json();
             list.innerHTML = "";
             data.forEach(item => {
                 const li = document.createElement("li");
-                li.innerHTML = `<div style="padding:6px 10px;"><div style="font-weight:600;">${item.name}</div>${item.second_row ? `<div style="color:#666; font-size:0.9rem;">${item.second_row}</div>` : ""}</div>`;
+                li.innerHTML = `
+                    <div style="padding:6px 10px;">
+                        <div style="font-weight:600;">${item.name}</div>
+                        ${item.second_row ? `<div style="color:#666; font-size:0.9rem;">${item.second_row}</div>` : ""}
+                    </div>
+                `;
                 li.style.cursor = "pointer";
                 li.addEventListener("mouseenter", () => li.style.background = "#eef");
                 li.addEventListener("mouseleave", () => li.style.background = "");
@@ -288,13 +370,17 @@
             list.style.display = data.length ? "block" : "none";
         }, 300);
     });
-    document.addEventListener("click", e => { if (!list.contains(e.target) && e.target !== input) list.style.display = "none"; });
 
-    // smart search tags
+    document.addEventListener("click", e => {
+        if (!list.contains(e.target) && e.target !== input) list.style.display = "none";
+    });
+
+    /* =============== CHYTRÉ VYHLEDÁVÁNÍ (TAGY) ================== */
     const smartInput = document.getElementById("keyword-input");
     const hiddenInput = document.getElementById("description_search");
     const container = document.getElementById("smart-search");
     let keywords = [];
+
     function renderTags() {
         container.querySelectorAll(".tag").forEach(t => t.remove());
         keywords.forEach(word => {
@@ -305,18 +391,44 @@
         });
         hiddenInput.value = keywords.join(", ");
     }
+
     smartInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
-            e.preventDefault();
+            e.preventDefault(); // Zabrání odeslání formuláře
             const value = smartInput.value.trim();
-            if (value && !keywords.includes(value)) { keywords.push(value); renderTags(); }
+            if (value && !keywords.includes(value)) {
+                keywords.push(value);
+                renderTags();
+            }
             smartInput.value = "";
         }
     });
+
     container.addEventListener("click", (e) => {
         if (e.target.tagName === "SPAN") {
             const val = e.target.getAttribute("data-value");
             keywords = keywords.filter(k => k !== val);
+            renderTags();
+        }
+    });
+
+    /* =============== RESET FORMULÁŘE ================== */
+    document.getElementById("reset-filters").addEventListener("click", () => {
+        const form = document.querySelector("form");
+        form.reset();
+        keywords = [];
+        renderTags();
+        smartInput.value = "";
+        hiddenType.value = "";
+        hiddenId.value = "";
+        list.style.display = "none";
+    });
+
+    /* =============== NAČTENÍ EXISTUJÍCÍCH TAGŮ (např. po návratu zpět) ================== */
+    window.addEventListener("load", () => {
+        const existing = hiddenInput.value.split(",").map(x => x.trim()).filter(Boolean);
+        if (existing.length) {
+            keywords = existing;
             renderTags();
         }
     });
@@ -342,5 +454,6 @@
     // po načtení stránky – aktualizovat stav
     window.addEventListener("load", updateRegionLock);
 </script>
+
 </body>
 </html>

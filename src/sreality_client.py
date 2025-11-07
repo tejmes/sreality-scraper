@@ -5,6 +5,7 @@ import json
 import httpx
 import time
 import re
+import unicodedata
 
 from src.headers import build_browser_like_headers
 
@@ -135,7 +136,7 @@ def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     return results
 
 
-def to_card(item: dict[str, any]) -> dict[str, any]:
+def to_card(item: dict[str, Any]) -> dict[str, Any]:
     """
     Převádí JSON položku z API na interní 'card' objekt.
     """
@@ -148,31 +149,68 @@ def to_card(item: dict[str, any]) -> dict[str, any]:
     else:
         loc_txt = str(loc)
 
-    # --- Plocha a cena ---
-    area = item.get("estate_area") or item.get("land_area") or item.get("usable_area")
-    price = item.get("price_summary_czk")
+    advert_name = item.get("advert_name") or ""
+    clean_name = advert_name.replace("\xa0", " ").replace("\u202f", " ")
+    match = re.search(r"(\d+)", clean_name)
+    area = int(match.group(1)) if match else None
 
-    # --- Kategorie mapy ---
+    price_raw = item.get("price_summary_czk") or item.get("price_czk") or item.get("price")
+    if isinstance(price_raw, dict):
+        price = price_raw.get("value")
+    else:
+        price = price_raw
+
     type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
     main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
     sub_map = {
+        2: "1+kk",
+        3: "1+1",
+        4: "2+kk",
+        5: "2+1",
+        6: "3+kk",
+        7: "3+1",
+        8: "4+kk",
+        9: "4+1",
+        10: "5+kk",
+        11: "5+1",
+        12: "6-a-vice",
+        16: "atypicky",
         18: "komercni",
         19: "bydleni",
         20: "pole",
         21: "les",
         22: "louka",
         23: "zahrada",
-        24: "ostatni",
+        24: "ostatni-pozemky",
+        25: "kancelare",
+        26: "sklady",
+        27: "vyroba",
+        28: "obchodni-prostory",
+        29: "ubytovani",
+        30: "restaurace",
+        31: "zemedelsky",
+        32: "ostatni-komercni",
         33: "chata",
+        34: "garaz",
         35: "pamatka-jine",
+        36: "ostatni-ostatni",
         37: "rodinny",
+        38: "cinzovni-dum",
         39: "vila",
         40: "na-klic",
         43: "chalupa",
         44: "zemedelska-usedlost",
         46: "rybnik",
-        48: "sad-vinice",
+        47: "pokoj",
+        48: "sady-vinice",
+        49: "virtualni-kancelar",
+        50: "vinny-sklep",
+        51: "pudni-prostor",
+        52: "garazove-stani",
+        53: "mobilheim",
         54: "vicegeneracni-dum",
+        56: "ordinace",
+        57: "apartmany",
     }
 
     def _val(cb):
@@ -192,47 +230,31 @@ def to_card(item: dict[str, any]) -> dict[str, any]:
         return cb
 
     def _slugify(s: str) -> str:
-        import unicodedata, re
         s = unicodedata.normalize("NFKD", s)
         s = "".join(ch for ch in s if not unicodedata.combining(ch))
         s = s.lower()
         s = re.sub(r"[^a-z0-9]+", "-", s)
         return s.strip("-")
 
-    # --- Oprava množného čísla ---
-    def _singularize(s: str) -> str:
-        if not s:
-            return s
-        s = s.lower()
-        fixes = {
-            "louky": "louka",
-            "zahrady": "zahrada",
-            "lesy": "les",
-            "rybniky": "rybnik",
-            "sady-vinice": "sad-vinice",
-        }
-        for wrong, correct in fixes.items():
-            s = s.replace(f"/{wrong}/", f"/{correct}/")
-            if s.startswith(wrong + "/"):
-                s = correct + s[len(wrong):]
-            if s.endswith("/" + wrong):
-                s = s[: -len(wrong)] + correct
-            if s == wrong:
-                s = correct
-        return s
-
     # --- Kategorie ---
     ct = type_map.get(_val(item.get("category_type_cb")), "detail")
     cm = main_map.get(_val(item.get("category_main_cb")), "nemovitost")
     sub_val = _val(item.get("category_sub_cb"))
     cs = sub_map.get(sub_val, "")
-    # pokud sub_map nevrátí nic, zkus singularizovat textový název
-    if not cs and isinstance(item.get("category_sub_cb"), dict):
-        name = (item.get("category_sub_cb") or {}).get("name", "")
-        cs = _singularize(name.lower())
-    cs = _singularize(cs)
 
-    # --- Lokalita slug (API ji někdy vrací množně, např. 'zahrady/skvorec') ---
+    # --- Oprava množných tvarů podkategorií (Sreality používá singulár) ---
+    singular_fixes = {
+        "louky": "louka",
+        "lesy": "les",
+        "zahrady": "zahrada",
+        "rybniky": "rybnik",
+        "sady-vinice": "sad-vinice",
+        "ostatni-pozemky": "ostatni-pozemek",
+    }
+    if cs in singular_fixes:
+        cs = singular_fixes[cs]
+
+    # --- Lokalita slug (API ji někdy vrací množně, např. 'zahrady') ---
     seo = item.get("seo") or {}
     locality_slug = seo.get("locality") if isinstance(seo, dict) else ""
     if not locality_slug and isinstance(loc, dict):
@@ -240,9 +262,6 @@ def to_card(item: dict[str, any]) -> dict[str, any]:
         locality_slug = "-".join(_slugify(x) for x in parts if x)
     elif isinstance(loc, str) and not locality_slug:
         locality_slug = _slugify(loc)
-
-    # 💥 Oprav i pluralitu v seo.locality
-    locality_slug = _singularize(locality_slug)
 
     # --- Složení finální URL ---
     hid = item.get("hash_id")
@@ -253,13 +272,6 @@ def to_card(item: dict[str, any]) -> dict[str, any]:
     else:
         url = f"https://www.sreality.cz/detail/{cat_path}/{hid}"
 
-    # 💥 Finální jistota: převeď pluralitu v celé URL
-    url = _singularize(url)
-
-    print("[DEBUG] → OUTPUT URL:", url)
-    print("[DEBUG] =======================\n")
-
-    # --- Výstup ---
     return {
         "id": item.get("hash_id"),
         "title": item.get("advert_name") or "(bez názvu)",

@@ -165,3 +165,38 @@ def get_known_ids(db_path: Path | str = DEFAULT_DB_PATH) -> list[int]:
     ids = [row[0] for row in cur.fetchall()]
     con.close()
     return ids
+
+
+def ensure_new_ads_table(db_path: Path | str = DEFAULT_DB_PATH):
+    """Zajistí existenci tabulky pro nové inzeráty."""
+    db_path = Path(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS new_estates (
+        hash_id INTEGER PRIMARY KEY,
+        first_detected TEXT NOT NULL,
+        seen INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(hash_id) REFERENCES estates(hash_id)
+    );
+    """)
+    con.commit()
+    con.close()
+
+
+def mark_new_ads(new_items: list[dict], db_path: Path | str = DEFAULT_DB_PATH):
+    """Uloží nové inzeráty do new_estates."""
+    ensure_new_ads_table(db_path)
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    now = datetime.now(ZoneInfo("Europe/Prague")).strftime("%Y-%m-%d %H:%M:%S")
+    for item in new_items:
+        hid = item.get("hash_id")
+        if not hid:
+            continue
+        cur.execute(
+            "INSERT OR IGNORE INTO new_estates (hash_id, first_detected, seen) VALUES (?, ?, 0)",
+            (hid, now),
+        )
+    con.commit()
+    con.close()

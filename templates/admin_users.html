@@ -49,8 +49,13 @@
             <form action="/admin/users/{{ user.id }}/delete" method="post" style="display:inline;">
                 <button type="submit" onclick="return confirm('Opravdu smazat?')">Smazat</button>
             </form>
-            <form action="/admin/users/{{ user.id }}/reset" method="post" style="display:inline;">
-                <button type="submit" onclick="return confirm('Resetovat heslo?')">Reset hesla</button>
+            <form id="reset-form-{{ user.id }}" method="post" action="/admin/users/{{ user.id }}/reset-password"
+                  style="display:inline;">
+                <input type="hidden" name="new_password" value="">
+                <button type="button" onclick="resetPassword({{ user.id }})"
+                        style="background:#2563eb;color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;">
+                    Reset hesla
+                </button>
             </form>
         </td>
     </tr>
@@ -58,4 +63,14 @@
     </tbody>
 </table>
 </body>
+<script>
+    function resetPassword(userId) {
+        const pwd = prompt("Zadejte nové heslo pro tohoto uživatele:");
+        if (!pwd) return;  // uživatel stiskl Storno nebo nezadal nic
+
+        const form = document.getElementById("reset-form-" + userId);
+        form.querySelector("input[name='new_password']").value = pwd;
+        form.submit();
+    }
+</script>
 </html>

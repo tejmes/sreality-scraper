@@ -6,13 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <style>
         body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
-        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
-        .toolbar a:hover { background:#d1d5db; }
         table { width:100%; border-collapse: collapse; }
         th, td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #e5e7eb; }
         th { background:#f9fafb; }
-        .actions { display:flex; gap:.5rem; }
         .btn { padding:.4rem .7rem; border:1px solid #d1d5db; border-radius:8px; text-decoration:none; color:#111; background:#fff; }
         .btn:hover { background:#f3f4f6; }
         .muted { color:#6b7280; font-size:.95rem; }
@@ -39,9 +35,12 @@
         <a href="/logout"
            style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
             se</a>
+        <a href="/user/reset_password"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
+            🔑 Změnit heslo
+        </a>
     </div>
 </div>
-
 
 {% if routines|length == 0 %}
 <p class="muted">Zatím nemáš žádné rutiny.</p>
@@ -50,6 +49,9 @@
     <thead>
     <tr>
         <th>Název</th>
+        {% if is_admin %}
+        <th>Autor</th>
+        {% endif %}
         <th>Vytvořeno</th>
         <th>Popis</th>
         <th>Akce</th>
@@ -59,6 +61,9 @@
     {% for r in routines %}
     <tr>
         <td><a class="btn" href="/routines/{{ r.id }}">{{ r.name }}</a></td>
+        {% if is_admin %}
+        <td class="muted">{{ r.author_name or "?" }}</td>
+        {% endif %}
         <td class="muted">{{ r.created_at }}</td>
         <td class="muted">
             {% if r.description %}
@@ -67,7 +72,7 @@
             <span style="color:#9ca3af;">(bez popisu)</span>
             {% endif %}
         </td>
-        <td class="actions">
+        <td>
             <a class="btn" href="/routines/{{ r.id }}">Detail</a>
         </td>
     </tr>

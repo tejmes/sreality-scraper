@@ -39,8 +39,31 @@
         <a href="/logout"
            style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
             se</a>
+        <a href="/user/reset_password"
+           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
+            🔑 Změnit heslo
+        </a>
     </div>
 </div>
+
+{% if filters.routine_id and filters.only_new %}
+<form method="post" action="/routines/{{ filters.routine_id }}/mark_all_seen" style="margin-bottom: 1rem;">
+    <button type="submit"
+            onclick="return confirm('Opravdu označit všechny nové inzeráty jako zhlédnuté?');"
+            style="
+                background:#dc2626;
+                color:white;
+                border:none;
+                padding:0.6rem 1rem;
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:600;
+            ">
+        Označit všechny jako zhlédnuté
+    </button>
+</form>
+{% endif %}
+
 
 {% set routine_id = filters.get('routine_id') %}
 
