@@ -93,22 +93,29 @@
     </form>
 </div>
 
-<div class="card" style="margin-bottom:1rem;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
-        <div class="row-actions">
-            <form id="run-form" class="inline" action="/routines/{{ routine.id }}/run" method="post"
-                  style="display:flex; gap:.6rem;">
-                <label><input type="checkbox" name="only_new" value="1"> pouze nové</label>
-                <button type="submit" id="run-btn">Spustit teď</button>
-            </form>
-        </div>
-        <a class="btn" href="/routines/{{ routine.id }}/new">🆕 Zobrazit nové inzeráty</a>
-        <form class="inline" action="/routines/{{ routine.id }}/delete" method="post"
-              onsubmit="return confirm('Opravdu smazat tuto rutinu včetně jejích dat?');">
-            <button class="danger" type="submit">Smazat rutinu</button>
-        </form>
-    </div>
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="routine-toolbar">
+      <div class="toolbar-left">
+          <form id="run-form" class="inline" action="/routines/{{ routine.id }}/run" method="post">
+              <label><input type="checkbox" name="only_new" value="1"> pouze nové</label>
+              <button type="submit" class="btn">▶️ Spustit teď</button>
+          </form>
+      </div>
+
+      <div class="toolbar-center">
+          <a href="/routines/{{ routine.id }}/new" class="btn-secondary">🆕 Nové inzeráty</a>
+      </div>
+
+      <div class="toolbar-right">
+          <form action="/routines/{{ routine.id }}/delete" method="post"
+                onsubmit="return confirm('Opravdu smazat tuto rutinu včetně jejích dat?');">
+              <button type="submit" class="btn danger">🗑️ Smazat rutinu</button>
+          </form>
+      </div>
+  </div>
 </div>
+
+
 
 <!-- Modal -->
 <div id="loading-modal">

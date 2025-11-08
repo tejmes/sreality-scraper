@@ -5,9 +5,40 @@
     <title>Správa uživatelů</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 2rem;
+            background: #fafafa;
+        }
+        h1, h2 { margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: .6rem .5rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
+        th { background: #f9fafb; font-weight: 600; }
+        .muted { color: #6b7280; font-size: .95rem; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        input[type="text"], input[type="password"] { width: 100%; max-width: 300px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; }
+        .form-row label { font-weight: 500; }
+        button, .btn {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: .5rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover, .btn:hover { background: #0b5ed7; }
+        .danger { background: #ef4444; }
+        .danger:hover { background: #dc2626; }
+        @media (max-width: 700px) {
+            .form-row { flex-direction: column; align-items: stretch; }
+            input { width: 100%; }
+        }
+    </style>
 </head>
 <body>
-<h1>Správa uživatelů</h1>
 
 <nav class="top-nav">
     <div class="nav-left">
@@ -25,65 +56,79 @@
     </div>
 </nav>
 
+<h1>👤 Správa uživatelů</h1>
 
-<h2>Vytvořit nového uživatele</h2>
-<form action="/admin/users/create" method="post" style="margin-bottom: 2rem;">
-    <label>Uživatelské jméno:</label>
-    <input type="text" name="username" required>
+<div class="card">
+    <h2>Nový uživatel</h2>
+    <form action="/admin/users/create" method="post">
+        <div class="form-row">
+            <div>
+                <label>Uživatelské jméno:</label>
+                <input type="text" name="username" required>
+            </div>
+            <div>
+                <label>Heslo:</label>
+                <input type="password" name="password" required>
+            </div>
+            <div>
+                <label><input type="checkbox" name="is_admin" value="1"> Admin účet</label>
+            </div>
+            <div>
+                <button type="submit">Vytvořit</button>
+            </div>
+        </div>
+    </form>
+</div>
 
-    <label>Heslo:</label>
-    <input type="password" name="password" required>
+<div class="card">
+    <h2>Existující uživatelé</h2>
+    {% if users|length == 0 %}
+        <p class="muted">Zatím nejsou žádní uživatelé.</p>
+    {% else %}
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Uživatel</th>
+                <th>Admin</th>
+                <th>Vytvořen</th>
+                <th>Akce</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ "Ano" if user.is_admin else "Ne" }}</td>
+                <td>{{ user.created_at }}</td>
+                <td style="display:flex; flex-wrap:wrap; gap:.5rem;">
+                    <form action="/admin/users/{{ user.id }}/delete" method="post" onsubmit="return confirm('Opravdu smazat tohoto uživatele?')" style="display:inline;">
+                        <button type="submit" class="danger">Smazat</button>
+                    </form>
+                    <form id="reset-form-{{ user.id }}" method="post" action="/admin/users/{{ user.id }}/reset-password" style="display:inline;">
+                        <input type="hidden" name="new_password" value="">
+                        <button type="button" onclick="resetPassword({{ user.id }})">Reset hesla</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
 
-    <label>Admin účet:</label>
-    <input type="checkbox" name="is_admin" value="1">
-
-    <button type="submit">Vytvořit</button>
-</form>
-
-<h2>Existující uživatelé</h2>
-<table border="1" cellpadding="6" cellspacing="0">
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Uživatel</th>
-        <th>Admin</th>
-        <th>Vytvořen</th>
-        <th>Akce</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for user in users %}
-    <tr>
-        <td>{{ user.id }}</td>
-        <td>{{ user.username }}</td>
-        <td>{{ "Ano" if user.is_admin else "Ne" }}</td>
-        <td>{{ user.created_at }}</td>
-        <td>
-            <form action="/admin/users/{{ user.id }}/delete" method="post" style="display:inline;">
-                <button type="submit" onclick="return confirm('Opravdu smazat?')">Smazat</button>
-            </form>
-            <form id="reset-form-{{ user.id }}" method="post" action="/admin/users/{{ user.id }}/reset-password"
-                  style="display:inline;">
-                <input type="hidden" name="new_password" value="">
-                <button type="button" onclick="resetPassword({{ user.id }})"
-                        style="background:#2563eb;color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;">
-                    Reset hesla
-                </button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
-</body>
 <script>
-    function resetPassword(userId) {
-        const pwd = prompt("Zadejte nové heslo pro tohoto uživatele:");
-        if (!pwd) return;  // uživatel stiskl Storno nebo nezadal nic
-
-        const form = document.getElementById("reset-form-" + userId);
-        form.querySelector("input[name='new_password']").value = pwd;
-        form.submit();
-    }
+function resetPassword(userId) {
+    const pwd = prompt("Zadejte nové heslo pro tohoto uživatele:");
+    if (!pwd) return;
+    const form = document.getElementById("reset-form-" + userId);
+    form.querySelector("input[name='new_password']").value = pwd;
+    form.submit();
+}
 </script>
+
+</body>
 </html>
