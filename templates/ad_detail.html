@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>{{ estate.advert_name }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
@@ -16,32 +17,22 @@
     </style>
 </head>
 <body>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-        <a href="/admin"
-           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🏠
-            Admin panel</a>
-        <a href="/search"
-           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">🔍
-            Vyhledávání</a>
-        <a href="/routines"
-           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">📋
-            Rutiny</a>
-        <a href="/routine"
-           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">＋
-            Nová rutina</a>
+<nav class="top-nav">
+    <div class="nav-left">
+        <a href="/admin">🏠 Admin panel</a>
+        <a href="/search">🔍 Vyhledávání</a>
+        <a href="/routines">📋 Rutiny</a>
+        <a href="/routine">＋ Nová rutina</a>
     </div>
-    <div>
-        <span style="color:#555;">Přihlášen jako <b>{{ request.session.username }}</b></span>
-        <a href="/logout"
-           style="margin-left:10px; background:#ef4444; color:#fff; padding:.4rem .8rem; border-radius:8px; text-decoration:none;">Odhlásit
-            se</a>
-        <a href="/user/reset_password"
-           style="background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500;">
-            🔑 Změnit heslo
-        </a>
+    <div class="nav-right">
+        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <div class="user-actions">
+            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/logout" class="btn-logout">Odhlásit se</a>
+        </div>
     </div>
-</div>
+</nav>
+
 
 <form method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen">
     <button type="submit" class="btn">Označit jako viděné</button>

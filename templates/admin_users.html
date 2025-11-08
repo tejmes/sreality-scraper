@@ -3,15 +3,28 @@
 <head>
     <meta charset="utf-8">
     <title>Správa uživatelů</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <h1>Správa uživatelů</h1>
 
-<p>
-    <a href="/admin" class="btn">← Zpět na panel</a>
-    <a href="/logout" class="btn">Odhlásit</a>
-</p>
+<nav class="top-nav">
+    <div class="nav-left">
+        <a href="/admin">🏠 Admin panel</a>
+        <a href="/search">🔍 Vyhledávání</a>
+        <a href="/routines">📋 Rutiny</a>
+        <a href="/routine">＋ Nová rutina</a>
+    </div>
+    <div class="nav-right">
+        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <div class="user-actions">
+            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/logout" class="btn-logout">Odhlásit se</a>
+        </div>
+    </div>
+</nav>
+
 
 <h2>Vytvořit nového uživatele</h2>
 <form action="/admin/users/create" method="post" style="margin-bottom: 2rem;">

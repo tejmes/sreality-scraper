@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Admin panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
     <style>
         body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:2rem; }
         a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
@@ -16,21 +17,22 @@
 </head>
 <body>
 
-<!-- Horní navigační panel -->
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+<nav class="top-nav">
+    <div class="nav-left">
         <a href="/admin">🏠 Admin panel</a>
-        <a href="/">🔍 Vyhledávání</a>
+        <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
-    <div>
-        <span style="color:#555;">Přihlášen jako <b>{{ username }}</b></span>
-        <a href="/logout" style="margin-left:10px; background:#ef4444; color:#fff;">Odhlásit se</a>
+    <div class="nav-right">
+        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <div class="user-actions">
+            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/logout" class="btn-logout">Odhlásit se</a>
+        </div>
     </div>
-</div>
+</nav>
 
-<!-- Nadpis -->
 <h1>Admin panel</h1>
 
 <!-- Sekce pro správu uživatelů -->
