@@ -6,39 +6,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin: 2rem; }
-        form { display: grid; gap: 1rem; max-width: 900px; }
-        fieldset { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
-        legend { font-weight: 600; }
-        label { display:block; margin-bottom:.25rem; font-size:.95rem; }
-        input, select { width:100%; padding:.5rem .6rem; border:1px solid #ccc; border-radius:6px; }
-        .row { display:grid; gap:1rem; grid-template-columns: repeat(3, 1fr); }
-        .row-2 { display:grid; gap:1rem; grid-template-columns: repeat(2, 1fr); }
-        button { padding:.7rem 1rem; border:0; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; }
-        button:hover { background:#0b5ed7; }
-        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
-        .toolbar a:hover { background:#d1d5db; }
-        .checkbox-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:4px 12px; margin-top:8px; }
-        .checkbox-grid label { display:inline-flex; align-items:center; gap:4px; font-size:.95rem; line-height:1.2; cursor:pointer; white-space:nowrap; }
-        .smart-search { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px; border:1px solid #ccc; border-radius:6px; background:#fff; }
-        .smart-search .tag { background:#5a6478; color:#fff; padding:4px 10px; border-radius:20px; display:inline-flex; align-items:center; font-size:.9rem; }
-        .smart-search .tag span { margin-left:6px; cursor:pointer; font-weight:bold; }
-        .smart-search input[type="text"] { border:none; outline:none; flex:1; min-width:120px; font-size:.95rem; }
-        textarea {
+        body {
+            margin: 2rem;
+        }
+        form {
+            display: grid;
+            gap: 1rem;
+            max-width: 900px;
+        }
+        fieldset {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        label {
+            display: block;
+            margin-bottom: .25rem;
+        }
+        input, select {
             width: 100%;
-            padding: .6rem .7rem;
+            padding: .5rem .6rem;
             border: 1px solid #ccc;
             border-radius: 6px;
-            font-size: .95rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 90px;
         }
-        textarea:focus {
+        .row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .row-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+        }
+        button {
+            padding: .7rem 1rem;
+            border: 0;
+            border-radius: 8px;
+            background: #0d6efd;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0b5ed7;
+        }
+        small { color: #666; }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+        .checkbox-grid label {
+            display: inline-flex;
+            align-items: center;
+        }
+        .toolbar {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom: 1rem;
+        }
+        .toolbar a {
+            background:#e5e7eb;
+            padding: .5rem 1rem;
+            border-radius:8px;
+            color:#111;
+            text-decoration:none;
+            font-weight:500;
+        }
+        .toolbar a:hover { background:#d1d5db; }
+        .smart-search {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .smart-search .tag {
+            background: #5a6478;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .smart-search .tag span {
+            margin-left: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .smart-search input[type="text"] {
+            border: none;
             outline: none;
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+            flex: 1;
+            min-width: 120px;
+            font-size: 0.95rem;
         }
     </style>
 </head>
@@ -64,11 +128,10 @@
     <fieldset>
         <legend>Základ</legend>
         <label for="routine_name">Název rutiny</label>
-        <input id="routine_name" name="routine_name" type="text" placeholder="Např. Pozemky Praha východ" required>
+        <input id="routine_name" name="routine_name" type="text" required>
 
         <label for="routine_description" style="margin-top:.8rem;">Popis rutiny</label>
-        <textarea id="routine_description" name="routine_description" rows="3"
-                  placeholder="Např. Sleduj stavební pozemky do 3 mil. Kč ve Středočeském kraji"></textarea>
+        <textarea id="routine_description" name="routine_description" rows="3"></textarea>
     </fieldset>
 
     <fieldset>
@@ -105,38 +168,42 @@
 
     <fieldset>
         <legend>Kategorie</legend>
-        <div class="row">
-            <div>
-                <label for="category_main_cb">Hlavní kategorie</label>
-                <select id="category_main_cb" name="category_main_cb">
-                    <option value="3">pozemky</option>
-                    <option value="1">byty</option>
-                    <option value="2">domy</option>
-                    <option value="4">komercni</option>
-                    <option value="5">ostatni</option>
-                </select>
+
+        <div style="margin-bottom:1rem;">
+            <label for="category_main_cb">Typ nemovitosti</label>
+            <select id="category_main_cb" name="category_main_cb">
+                <option value="1">Byty</option>
+                <option value="2">Domy</option>
+                <option value="3">Pozemky</option>
+                <option value="4">Komerční</option>
+                <option value="5">Ostatní</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <label>Typ nabídky</label>
+            <div class="checkbox-grid">
+                <label><input type="checkbox" name="category_type_cb" value="1"> Prodej</label>
+                <label><input type="checkbox" name="category_type_cb" value="2"> Pronájem</label>
+                <label><input type="checkbox" name="category_type_cb" value="3"> Dražby</label>
+                <label><input type="checkbox" name="category_type_cb" value="4"> Podíly</label>
             </div>
-            <div>
-                <label for="category_type_cb">Typ nabídky</label>
-                <select id="category_type_cb" name="category_type_cb">
-                    <option value="">(neurčeno)</option>
-                    <option value="1">prodej</option>
-                    <option value="2">pronajem</option>
-                    <option value="3">drazby</option>
-                    <option value="4">podily</option>
-                </select>
-            </div>
-            <div>
-                <label>Podkategorie (možno vybrat více)</label>
-                <div class="checkbox-grid">
-                    <label><input type="checkbox" name="category_sub_cb" value="18"> Komerční</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="19"> Bydlení</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="20"> Pole</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="21"> Lesy</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="22"> Louky</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="23"> Zahrady</label>
-                    <label><input type="checkbox" name="category_sub_cb" value="24"> Ostatní</label>
-                </div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <label>Dispozice</label>
+            <div id="dispozice-container" class="checkbox-grid"></div>
+        </div>
+
+        <div id="rooms-wrapper" style="margin-bottom:1rem;">
+            <label>Velikost</label>
+            <div class="checkbox-grid">
+                <label><input type="checkbox" name="room_count_cb" value="1"> 1 pokoj</label>
+                <label><input type="checkbox" name="room_count_cb" value="2"> 2 pokoje</label>
+                <label><input type="checkbox" name="room_count_cb" value="3"> 3 pokoje</label>
+                <label><input type="checkbox" name="room_count_cb" value="4"> 4 pokoje</label>
+                <label><input type="checkbox" name="room_count_cb" value="5"> 5 a více pokojů</label>
+                <label><input type="checkbox" name="room_count_cb" value="6"> Atypický</label>
             </div>
         </div>
     </fieldset>
@@ -154,9 +221,6 @@
                 <label for="locality_region_id">Kraj</label>
                 <select id="locality_region_id" name="locality_region_id">
                     <option value="">(neurčeno)</option>
-                    <option value="11">Středočeský</option>
-                    <option value="10">Praha</option>
-                    <option value="14">Jihomoravský</option>
                     <option value="1">Jihočeský</option>
                     <option value="2">Plzeňský</option>
                     <option value="3">Karlovarský</option>
@@ -166,13 +230,12 @@
                     <option value="7">Pardubický</option>
                     <option value="8">Olomoucký</option>
                     <option value="9">Zlínský</option>
+                    <option value="10">Praha</option>
+                    <option value="11">Středočeský</option>
                     <option value="12">Moravskoslezský</option>
                     <option value="13">Vysočina</option>
+                    <option value="14">Jihomoravský</option>
                 </select>
-            </div>
-            <div>
-                <label for="locality_district_id">Okres (volitelné)</label>
-                <input id="locality_district_id" name="locality_district_id" type="number" placeholder="např. 48">
             </div>
         </div>
 
@@ -183,26 +246,65 @@
                        autocomplete="off">
                 <input type="hidden" id="locality_entity_type" name="locality_entity_type">
                 <input type="hidden" id="locality_entity_id" name="locality_entity_id">
-                <ul id="suggestions"
-                    style="list-style:none;margin:0;padding:0;position:absolute;width:100%;background:white;border:1px solid #ccc;border-top:none;z-index:1000;display:none;max-height:200px;overflow-y:auto;box-shadow:0 2px 6px rgba(0,0,0,0.1);"></ul>
+                <ul id="suggestions" style="
+                    list-style:none;
+                    margin:0;
+                    padding:0;
+                    position:absolute;
+                    width:100%;
+                    background:white;
+                    border:1px solid #ccc;
+                    border-top:none;
+                    z-index:1000;
+                    display:none;
+                    max-height:200px;
+                    overflow-y:auto;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+                "></ul>
             </div>
+
             <div>
-                <label for="locality_radius">Poloměr (km)</label>
+                <label for="locality_radius">Hledat v okolí (km)</label>
                 <input id="locality_radius" name="locality_radius" type="number" step="0.1" placeholder="např. 5">
             </div>
         </div>
     </fieldset>
 
+    <fieldset id="fieldset-properties">
+        <legend>Vlastnosti nemovitosti</legend>
+        <div id="usable-area-row" class="row" style="display:none;">
+            <div>
+                <label for="usable_area_from">Užitná plocha od (m²)</label>
+                <input id="usable_area_from" name="usable_area_from" type="number">
+            </div>
+            <div>
+                <label for="usable_area_to">Užitná plocha do (m²)</label>
+                <input id="usable_area_to" name="usable_area_to" type="number">
+            </div>
+        </div>
+
+        <div id="estate-area-row" class="row" style="margin-top:1rem; display:none;">
+            <div>
+                <label for="estate_area_from">Plocha pozemku od (m²)</label>
+                <input id="estate_area_from" name="estate_area_from" type="number">
+            </div>
+            <div>
+                <label for="estate_area_to">Plocha pozemku do (m²)</label>
+                <input id="estate_area_to" name="estate_area_to" type="number">
+            </div>
+        </div>
+    </fieldset>
+
     <fieldset>
-        <legend>Další filtry</legend>
+        <legend>Cena</legend>
         <div class="row">
             <div>
                 <label for="price_from">Cena od (Kč)</label>
-                <input id="price_from" name="price_from" type="number" placeholder="např. 1000000">
+                <input id="price_from" name="price_from" type="number">
             </div>
             <div>
                 <label for="price_to">Cena do (Kč)</label>
-                <input id="price_to" name="price_to" type="number" placeholder="např. 3000000">
+                <input id="price_to" name="price_to" type="number">
             </div>
             <div>
                 <label for="price_mode">Typ ceny</label>
@@ -212,43 +314,141 @@
                 </select>
             </div>
         </div>
+    </fieldset>
 
-        <div class="row" style="margin-top:1rem;">
-            <div>
-                <label for="estate_area_from">Plocha od (m²)</label>
-                <input id="estate_area_from" name="estate_area_from" type="number" placeholder="např. 2500">
+    <fieldset>
+        <legend for="description_search">Chytré vyhledávání</legend>
+        <div>
+            <div id="smart-search" class="smart-search">
+                <input type="text" id="keyword-input" placeholder="Zadejte klíčové slovo a stiskněte Enter">
+                <input type="hidden" name="description_search" id="description_search">
             </div>
-            <div>
-                <label for="estate_area_to">Plocha do (m²)</label>
-                <input id="estate_area_to" name="estate_area_to" type="number">
-            </div>
-            <div>
-                <label for="description_search">Text (chytré vyhledávání)</label>
-                <div id="smart-search" class="smart-search">
-                    <input type="text" id="keyword-input" placeholder="Zadejte klíčové slovo a stiskněte Enter">
-                    <input type="hidden" name="description_search" id="description_search">
-                </div>
-                <small>Vyhledá v popisu a ve fotografiích. Klíčová slova oddělujte stiskem Enter.</small>
-            </div>
+            <small>Vyhledá v popisu a ve fotografiích. Klíčová slova oddělujte stiskem Enter.</small>
         </div>
+    </fieldset>
 
-        <div class="row" style="margin-top:1rem;">
-            <div>
-                <label for="advert_age_to">Stáří inzerátu do (dní)</label>
-                <input id="advert_age_to" name="advert_age_to" type="number" placeholder="např. 31">
-            </div>
+    <fieldset>
+        <legend>Vlastnosti inzerátu</legend>
+        <div>
+            <label for="advert_age_to">Stáří inzerátu do (dní)</label>
+            <input id="advert_age_to" name="advert_age_to" type="number" placeholder="např. 31">
         </div>
     </fieldset>
 
     <div style="display:flex; gap:1rem;">
         <button type="submit">Vytvořit rutinu</button>
-        <a href="/routines"
-           style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět
-            na seznam rutin</a>
+        <button type="button" id="reset-filters" style="background:#6b7280;">Vymazat</button>
+        <a href="/routines" style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět na seznam rutin</a>
     </div>
 </form>
 
 <script>
+    const DISPOZICE = [
+        { label: "1+kk", value: 2, visibleFor: [1] },
+        { label: "1+1", value: 3, visibleFor: [1] },
+        { label: "2+kk", value: 4, visibleFor: [1] },
+        { label: "2+1", value: 5, visibleFor: [1] },
+        { label: "3+kk", value: 6, visibleFor: [1] },
+        { label: "3+1", value: 7, visibleFor: [1] },
+        { label: "4+kk", value: 8, visibleFor: [1] },
+        { label: "4+1", value: 9, visibleFor: [1] },
+        { label: "5+kk", value: 10, visibleFor: [1] },
+        { label: "5+1", value: 11, visibleFor: [1] },
+        { label: "6 a více", value: 12, visibleFor: [1] },
+        { label: "Atypický", value: 16, visibleFor: [1] },
+        { label: "Komerční", value: 18, visibleFor: [3] },
+        { label: "Bydlení", value: 19, visibleFor: [3] },
+        { label: "Pole", value: 20, visibleFor: [3] },
+        { label: "Lesy", value: 21, visibleFor: [3] },
+        { label: "Louky", value: 22, visibleFor: [3] },
+        { label: "Zahrady", value: 23, visibleFor: [3] },
+        { label: "Ostatní", value: 24, visibleFor: [3] },
+        { label: "Kanceláře", value: 25, visibleFor: [4] },
+        { label: "Sklady", value: 26, visibleFor: [4] },
+        { label: "Výroba", value: 27, visibleFor: [4] },
+        { label: "Obchodní prostory", value: 28, visibleFor: [4] },
+        { label: "Ubytování", value: 29, visibleFor: [4] },
+        { label: "Restaurace", value: 30, visibleFor: [4] },
+        { label: "Zemědělský", value: 31, visibleFor: [4] },
+        { label: "Ostatní", value: 32, visibleFor: [4] },
+        { label: "Chata", value: 33, visibleFor: [2] },
+        { label: "Garáž", value: 34, visibleFor: [5] },
+        { label: "Památka/jiné", value: 35, visibleFor: [2] },
+        { label: "Ostatní", value: 36, visibleFor: [5] },
+        { label: "Rodinný", value: 37, visibleFor: [2] },
+        { label: "Činžovní dům", value: 38, visibleFor: [4] },
+        { label: "Vila", value: 39, visibleFor: [2] },
+        { label: "Na klíč", value: 40, visibleFor: [2] },
+        { label: "Chalupa", value: 43, visibleFor: [2] },
+        { label: "Zemědělská usedlost", value: 44, visibleFor: [2] },
+        { label: "Rybníky", value: 46, visibleFor: [3] },
+        { label: "Pokoj", value: 47, visibleFor: [1] },
+        { label: "Sady/vinice", value: 48, visibleFor: [3] },
+        { label: "Virtuální kancelář", value: 49, visibleFor: [4] },
+        { label: "Vinný sklep", value: 50, visibleFor: [5] },
+        { label: "Půdní prostor", value: 51, visibleFor: [5] },
+        { label: "Garážové stání", value: 52, visibleFor: [5] },
+        { label: "Mobilheim", value: 53, visibleFor: [5] },
+        { label: "Vícegenerační dům", value: 54, visibleFor: [2] },
+        { label: "Ordinace", value: 56, visibleFor: [4] },
+        { label: "Apartmány", value: 57, visibleFor: [4] }
+    ];
+
+
+    function renderDispozice() {
+        const cont = document.getElementById("dispozice-container");
+        cont.innerHTML = "";
+
+        const type = parseInt(document.getElementById("category_main_cb").value);
+
+        const previouslyChecked = new Set(
+            Array.from(document.querySelectorAll("input[name='category_sub_cb']:checked"))
+                 .map(i => i.value)
+        );
+
+
+        DISPOZICE
+            .filter(item => item.visibleFor.includes(type))
+            .forEach(item => {
+                const lbl = document.createElement("label");
+            lbl.innerHTML = `
+                <input type="checkbox"
+                       name="category_sub_cb"
+                       value="${item.value}"
+                       ${previouslyChecked.has(String(item.value)) ? "checked" : ""}>
+                ${item.label}
+            `;
+                cont.appendChild(lbl);
+            });
+    }
+
+    // Při změně typu
+    document.getElementById("category_main_cb").addEventListener("change", renderDispozice);
+
+    // Při načtení
+    window.addEventListener("load", renderDispozice);
+
+
+    function updateRoomCountVisibility() {
+        const val = parseInt(document.getElementById("category_main_cb").value);
+        const wrapper = document.getElementById("rooms-wrapper");
+
+        // Pouze DOMY = 2
+        if (val === 2) {
+            wrapper.style.display = "block";
+        } else {
+            wrapper.style.display = "none";
+
+            // když není vidět → odškrtnout filtry
+            document.querySelectorAll("input[name='room_count_cb']").forEach(cb => cb.checked = false);
+        }
+    }
+
+    document.getElementById("category_main_cb").addEventListener("change", updateRoomCountVisibility);
+    window.addEventListener("load", updateRoomCountVisibility);
+
+
+
     // autocomplete
     const input = document.getElementById("locality_search_name");
     const list = document.getElementById("suggestions");
@@ -336,6 +536,50 @@
 
     // po načtení stránky – aktualizovat stav
     window.addEventListener("load", updateRegionLock);
+
+
+    // === Dynamické zobrazování ploch podle hlavní kategorie ===
+        const mainSelect = document.getElementById("category_main_cb");
+        const usableRow = document.getElementById("usable-area-row");
+        const estateRow = document.getElementById("estate-area-row");
+
+        function updateAreaVisibility() {
+            const val = parseInt(mainSelect.value);
+
+            const propsFieldset = document.getElementById("fieldset-properties");
+
+            // typ Ostatní (5) → schovat celý fieldset
+            if (val === 5) {
+                propsFieldset.style.display = "none";
+            } else {
+                propsFieldset.style.display = "block";
+            }
+
+            // --- původní logika zobrazování ploch ---
+            if (val === 1) {
+                usableRow.style.display = "grid";
+                estateRow.style.display = "none";
+            }
+            else if (val === 2) {
+                usableRow.style.display = "grid";
+                estateRow.style.display = "grid";
+            }
+            else if (val === 3) {
+                usableRow.style.display = "none";
+                estateRow.style.display = "grid";
+            }
+            else if (val === 4) {
+                usableRow.style.display = "grid";
+                estateRow.style.display = "none";
+            }
+            else {
+                usableRow.style.display = "none";
+                estateRow.style.display = "none";
+            }
+        }
+
+    mainSelect.addEventListener("change", updateAreaVisibility);
+    window.addEventListener("load", updateAreaVisibility);
 </script>
 </body>
 </html>

@@ -76,7 +76,7 @@ fieldset {
   padding: 1rem;
 }
 legend { font-weight: 600; }
-label { display: block; margin-bottom: .25rem; font-size: .95rem; }
+label {margin-bottom: .25rem; font-size: .95rem; }
 
 input, select, textarea {
   width: 100%;
@@ -232,3 +232,6 @@ button, .btn {
         width: 100%;
     }
 }
+
+
+

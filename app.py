@@ -288,8 +288,9 @@ def autocomplete(q: str):
 def search(
         request: Request,
         category_main_cb: str = Form(...),
-        category_type_cb: Optional[str] = Form(None),
+        category_type_cb: Optional[List[str]] = Form(None),
         category_sub_cb: Optional[List[str]] = Form(None),
+        room_count_cb: Optional[List[str]] = Form(None),
 
         locality_country_id: Optional[str] = Form(None),
         locality_region_id: Optional[str] = Form(None),
@@ -301,6 +302,10 @@ def search(
         locality_radius: Optional[str] = Form(None),
 
         description_search: Optional[str] = Form(None),
+
+        usable_area_from: Optional[str] = Form(None),
+        usable_area_to: Optional[str] = Form(None),
+
         estate_area_from: Optional[str] = Form(None),
         estate_area_to: Optional[str] = Form(None),
         price_from: Optional[str] = Form(None),
@@ -313,13 +318,22 @@ def search(
 ):
     # převody
     cm = _to_int(category_main_cb)
-    ct = _to_int(category_type_cb)
+
+    # multi-výběr typů nabídky (prodej, pronajem, drazby...)
+    if category_type_cb:
+        ct = [int(x) for x in category_type_cb]
+    else:
+        ct = []
+
     subs = [_to_int(s) for s in category_sub_cb or [] if _to_int(s) is not None]
+    rooms = [_to_int(r) for r in (room_count_cb or []) if _to_int(r) is not None]
 
     country = _to_int(locality_country_id) or 112
     reg = _to_int(locality_region_id)
     dist = _to_int(locality_district_id)
     radius = _to_float(locality_radius)
+    ua_from = _to_int(usable_area_from)
+    ua_to = _to_int(usable_area_to)
     ea_from = _to_int(estate_area_from)
     ea_to = _to_int(estate_area_to)
     p_from = _to_int(price_from)
@@ -333,6 +347,7 @@ def search(
         category_main_cb=cm,
         category_type_cb=ct,
         category_sub_cb=subs,
+        room_count_cb=rooms,
         locality_country_id=country,
         locality_region_id=reg,
         locality_district_id=dist,
@@ -340,6 +355,8 @@ def search(
         locality_entity_type=_clean_str(locality_entity_type),
         locality_entity_id=_to_int(locality_entity_id),
         locality_radius=radius,
+        usable_area_from=ua_from,
+        usable_area_to=ua_to,
         estate_area_from=ea_from,
         estate_area_to=ea_to,
         price_from=None if use_price_m2 else p_from,
@@ -430,6 +447,8 @@ def routines_create(
         locality_entity_id: Optional[str] = Form(None),
         locality_radius: Optional[str] = Form(None),
         description_search: Optional[str] = Form(None),
+        usable_area_from: Optional[str] = Form(None),
+        usable_area_to: Optional[str] = Form(None),
         estate_area_from: Optional[str] = Form(None),
         estate_area_to: Optional[str] = Form(None),
         price_from: Optional[str] = Form(None),
@@ -453,6 +472,8 @@ def routines_create(
         "locality_entity_id": _to_int(locality_entity_id),
         "locality_radius": _to_float(locality_radius),
         "description_search": _clean_str(description_search),
+        "usable_area_from": _to_int(usable_area_from),
+        "usable_area_to": _to_int(usable_area_to),
         "estate_area_from": _to_int(estate_area_from),
         "estate_area_to": _to_int(estate_area_to),
         "price_from": _to_int(price_from) if price_mode != "per_m2" else None,
@@ -622,6 +643,8 @@ def routines_run(
         locality_entity_type=f.get("locality_entity_type"),
         locality_entity_id=f.get("locality_entity_id"),
         locality_radius=f.get("locality_radius"),
+        usable_area_from=f.get("usable_area_from"),
+        usable_area_to=f.get("usable_area_to"),
         estate_area_from=f.get("estate_area_from"),
         estate_area_to=f.get("estate_area_to"),
         price_from=f.get("price_from"),
@@ -789,6 +812,8 @@ def routine_run(
         locality_entity_id=_to_int(locality_entity_id),
         locality_radius=radius,
         description_search=_clean_str(description_search),
+        usable_area_from=f.get("usable_area_from"),
+        usable_area_to=f.get("usable_area_to"),
         estate_area_from=ea_from,
         estate_area_to=ea_to,
         price_from=None if use_price_m2 else p_from,

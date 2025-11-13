@@ -26,7 +26,7 @@ def _add(params: Dict[str, Any], key: str, value: Any) -> None:
 def build_query(
         *,
         category_main_cb: Optional[int] = None,
-        category_type_cb: Optional[int] = None,
+        category_type_cb: Optional[Iterable[int]] = None,
         category_sub_cb: Optional[Iterable[int]] = None,
         room_count_cb: Optional[Iterable[int]] = None,
         locality_country_id: Optional[int] = None,
@@ -37,6 +37,8 @@ def build_query(
         locality_entity_id: Optional[int] = None,
         locality_radius: Optional[float] = None,
         description_search: Optional[str] = None,
+        usable_area_from: Optional[int] = None,
+        usable_area_to: Optional[int] = None,
         estate_area_from: Optional[int] = None,
         estate_area_to: Optional[int] = None,
         price_from: Optional[int] = None,
@@ -51,8 +53,8 @@ def build_query(
     params: Dict[str, Any] = {}
     _add(params, "category_main_cb", category_main_cb)
     _add(params, "category_type_cb", category_type_cb)
-    _add(params, "category_sub_cb", list(category_sub_cb) if category_sub_cb else None)
-    _add(params, "room_count_cb", list(room_count_cb) if room_count_cb else None)
+    _add(params, "category_sub_cb", list(category_sub_cb))
+    _add(params, "room_count_cb", list(room_count_cb))
     _add(params, "locality_search_name", locality_search_name)
     _add(params, "locality_entity_type", locality_entity_type)
     _add(params, "locality_entity_id", locality_entity_id)
@@ -64,6 +66,8 @@ def build_query(
     if locality_radius is not None:
         _add(params, "locality_radius", float(locality_radius))
     _add(params, "description_search", description_search)
+    _add(params, "usable_area_from", usable_area_from)
+    _add(params, "usable_area_to", usable_area_to)
     _add(params, "estate_area_from", estate_area_from)
     _add(params, "estate_area_to", estate_area_to)
     _add(params, "price_from", price_from)

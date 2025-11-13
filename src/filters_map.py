@@ -108,6 +108,14 @@ locality_district_id = {
     "Benesov": 48
 }
 
+usable_area_from = {
+    "2500": 2500
+}
+
+usable_area_to = {
+    "2500": 2500
+}
+
 estate_area_from = {
     "2000": 2000
 }
