@@ -221,3 +221,9 @@ snapshots/
 
 # Local virtual environment (if present in project root)
 .venv/
+
+# Ignore all runtime data and routine databases
+data/
+data/**/*
+data/*.sqlite3
+data/**/*.sqlite3
