@@ -165,6 +165,12 @@
         window.addEventListener('load', toggleScheduleOptions);
     </script>
 
+    <fieldset>
+        <legend>E-mailová upozornění</legend>
+
+        <label for="emails">Posílat upozornění na e-maily:</label>
+        <input type="text" id="emails" name="emails" placeholder="např. muj@email.cz, dalsi@email.cz">
+    </fieldset>
 
     <fieldset>
         <legend>Kategorie</legend>
@@ -338,7 +344,9 @@
     <div style="display:flex; gap:1rem;">
         <button type="submit">Vytvořit rutinu</button>
         <button type="button" id="reset-filters" style="background:#6b7280;">Vymazat</button>
-        <a href="/routines" style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět na seznam rutin</a>
+        <a href="/routines"
+           style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět
+            na seznam rutin</a>
     </div>
 </form>
 

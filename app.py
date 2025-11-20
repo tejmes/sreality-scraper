@@ -52,6 +52,9 @@ from src.users_storage import (
     reset_password
 )
 
+from src.email_utils import send_email
+from src.email_builder import build_new_ads_email
+
 # === Načtení .env souboru ===
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -436,6 +439,12 @@ def routines_create(
         routine_name: str = Form(...),
         routine_description: Optional[str] = Form(None),
 
+        schedule_type: str = Form("manual"),
+        schedule_times: Optional[str] = Form(None),
+        schedule_days: Optional[str] = Form(None),
+
+        emails: Optional[str] = Form(None),
+
         category_main_cb: str = Form(...),
         category_type_cb: Optional[str] = Form(None),
         category_sub_cb: Optional[List[str]] = Form(None),
@@ -455,10 +464,6 @@ def routines_create(
         price_to: Optional[str] = Form(None),
         price_mode: str = Form("total"),
         advert_age_to: Optional[str] = Form(None),
-
-        schedule_type: str = Form("manual"),
-        schedule_times: Optional[str] = Form(None),
-        schedule_days: Optional[str] = Form(None),
 ):
     filters = {
         "category_main_cb": _to_int(category_main_cb),
@@ -506,6 +511,7 @@ def routines_create(
         filters=filters,
         user_id=uid,
         schedule=schedule,
+        emails=[e.strip() for e in (emails or "").split(",") if e.strip()],
     )
 
     create_db_if_needed(routine_db_path(routine["id"]))
@@ -585,6 +591,20 @@ def routines_update_description(routine_id: str, new_description: str = Form(...
     ok = update_routine_description(routine_id, new_description)
     if not ok:
         return HTMLResponse("Rutina nenalezena.", status_code=404)
+    return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
+
+
+@app.post("/routines/{routine_id}/update_emails")
+def routines_update_emails(request: Request, routine_id: str, emails: str = Form("")):
+    from src.routines_storage import _load_index, _save_index
+
+    doc = _load_index()
+    for r in doc["routines"]:
+        if r["id"] == routine_id:
+            r["emails"] = [e.strip() for e in emails.split(",") if e.strip()]
+            break
+
+    _save_index(doc)
     return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
 
 
@@ -778,6 +798,8 @@ def routine_run(
         locality_entity_id: Optional[str] = Form(None),
         locality_radius: Optional[str] = Form(None),
         description_search: Optional[str] = Form(None),
+        usable_area_from: Optional[str] = Form(None),
+        usable_area_to: Optional[str] = Form(None),
         estate_area_from: Optional[str] = Form(None),
         estate_area_to: Optional[str] = Form(None),
         price_from: Optional[str] = Form(None),
@@ -793,6 +815,8 @@ def routine_run(
     reg = _to_int(locality_region_id)
     dist = _to_int(locality_district_id)
     radius = _to_float(locality_radius)
+    ua_from = _to_int(usable_area_from)
+    ua_to = _to_int(usable_area_to)
     ea_from = _to_int(estate_area_from)
     ea_to = _to_int(estate_area_to)
     p_from = _to_int(price_from)
@@ -812,8 +836,8 @@ def routine_run(
         locality_entity_id=_to_int(locality_entity_id),
         locality_radius=radius,
         description_search=_clean_str(description_search),
-        usable_area_from=f.get("usable_area_from"),
-        usable_area_to=f.get("usable_area_to"),
+        usable_area_from=ua_from,
+        usable_area_to=ua_to,
         estate_area_from=ea_from,
         estate_area_to=ea_to,
         price_from=None if use_price_m2 else p_from,
@@ -867,6 +891,8 @@ def routine_run(
                 "locality_entity_id": locality_entity_id,
                 "locality_radius": radius,
                 "description_search": description_search,
+                "usable_area_from": ua_from,
+                "usable_area_to": ua_to,
                 "estate_area_from": ea_from,
                 "estate_area_to": ea_to,
                 "price_from": p_from,
@@ -1119,6 +1145,19 @@ def run_routine_job(routine):
     # 🟢 Zjistíme které jsou nové a uložíme do new_estates
     new_items = [x for x in all_items if x.get("hash_id") and x["hash_id"] not in known_ids]
     mark_new_ads(new_items, dbp)
+
+    emails = routine.get("emails") or []
+
+    if new_items and emails:
+        body = build_new_ads_email(routine, new_items)
+
+        send_email(
+            to=emails,
+            subject=f"Nové inzeráty – {routine['name']}",
+            text=body
+        )
+
+        print(f"[EMAIL] Odeslán email ({len(new_items)} nových inzerátů) → {emails}")
 
     update_routine_last_run(routine["id"])
     print(f"[CRON] Hotovo: {routine['name']} – {len(all_items)} inzerátů, nových {len(new_items)}")

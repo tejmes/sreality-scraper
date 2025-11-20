@@ -61,6 +61,7 @@ def create_routine(
         description: Optional[str] = None,
         user_id: Optional[int],
         schedule: Optional[str] = None,
+        emails: Optional[list] = None,
 ) -> Dict[str, Any]:
     """
     Vytvoří novou rutinu. Každá rutina je vlastněna konkrétním uživatelem (user_id).
@@ -75,7 +76,7 @@ def create_routine(
         "created_at": _now_iso(),
         "schedule": schedule,
         "last_run": None,
-        "emails": [],
+        "emails": emails or [],
         "active": True,
         "user_id": user_id,
     }
