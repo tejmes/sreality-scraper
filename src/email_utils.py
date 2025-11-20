@@ -17,7 +17,8 @@ def send_email(to: list[str], subject: str, text: str):
     user = os.getenv("SMTP_USER")
     password = os.getenv("SMTP_PASS")
 
-    # SMTP přes SSL
-    with smtplib.SMTP_SSL(host, port) as smtp:
+    # SMTP přes STARTTLS (port 587)
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.starttls()
         smtp.login(user, password)
         smtp.send_message(msg)
