@@ -574,7 +574,7 @@ def routines_detail(request: Request, routine_id: str):
     routine = get_routine(routine_id)
     deny = _ensure_can_access_routine(request, routine)
     if deny: return deny
-    return templates.TemplateResponse("routine_detail.html", {"request": request, "routine": routine})
+    return templates.TemplateResponse("routine_detail.html", {"request": request, "routine": routine, "is_admin": is_admin(request)})
 
 
 @app.post("/routines/{routine_id}/update_name")

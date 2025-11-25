@@ -1,121 +1,169 @@
-/* === Základní styl pro všechny stránky === */
 * {
   box-sizing: border-box;
 }
-
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: #fafafa;
-  color: #111;
+body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: #fafafa;
+    color: #111;
+    margin: 32px;
 }
-
-/* --- Responzivní navigace --- */
 .top-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: .75rem;
-  margin-bottom: 1rem;
-  background: #fff;
-  padding: .75rem 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    background: #fff;
+    padding: .75rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
 }
-
 .nav-left, .nav-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
 }
-
 .top-nav a {
-  background: #e5e7eb;
-  padding: .5rem 1rem;
-  border-radius: 8px;
-  color: #111;
-  text-decoration: none;
-  font-weight: 500;
-  white-space: nowrap;
+    background: #e5e7eb;
+    color: #111;
+    font-weight: 500;
+    text-decoration: none;
+    padding: .5rem 1rem;
+    border-radius: 8px;
+    white-space: nowrap;
 }
-
 .btn-logout {
-  background: #ef4444 !important;
-  color: #fff !important;
+    background: #ef4444 !important;
+    color: #fff !important;
 }
 .btn-logout:hover {
-  background: #dc2626 !important;
+    background: #dc2626 !important;
 }
-
-.btn-secondary {
-  background: #e5e7eb;
+btn-secondary:hover {
+    background: #d1d5db;
 }
-
-.user-label {
-  color: #555;
-}
-
 .user-actions {
   display: flex;
   flex-wrap: wrap;
   gap: .5rem;
 }
-
-/* --- Formuláře a tlačítka --- */
-form {
-  display: grid;
-  gap: 1rem;
-  width: 100%;
+.user-label {
+    display: flex;
+    align-items: center;
 }
-fieldset {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
+.user-label b {
+    color: #555;
+    margin-left: 4px;
 }
-legend { font-weight: 600; }
-label {margin-bottom: .25rem; font-size: .95rem; }
-
-input, select, textarea {
-  width: 100%;
-  padding: .5rem .6rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+.btn-main {
+    background: #0d6efd;
+    color: #fff;
+    text-decoration: none;
+    padding: .5rem 1rem;
+    border-radius: 8px;
 }
-
+.btn-main:hover {
+    background: #0b5ed7;
+}
+a:hover {
+    background: #d1d5db;
+}
+h2 {
+    margin-top: 0;
+}
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
 button, .btn {
   padding: .6rem 1rem;
   border-radius: 8px;
   border: none;
   cursor: pointer;
   font-weight: 600;
-  background: #0d6efd;   /* trvale modré */
+  background: #0d6efd;
   color: #fff;
 }
-
-/* --- Pomocné třídy --- */
-.row, .row-2 {
-  display: grid;
-  gap: 1rem;
+button:hover {
+    background: #0b5ed7;
 }
-.row { grid-template-columns: repeat(3, 1fr); }
-.row-2 { grid-template-columns: repeat(2, 1fr); }
-
-.muted {
-  color: #6b7280;
-  font-size: .95rem;
+.danger {
+    background: #ef4444;
+    color: #fff;
 }
-
-/* --- Responzivní úpravy --- */
-@media (max-width: 900px) {
-  .row { grid-template-columns: repeat(2, 1fr); }
+.danger:hover {
+    background: #dc2626;
 }
-@media (max-width: 600px) {
-  .row, .row-2 { grid-template-columns: 1fr; }
+form {
+    display: grid;
+    gap: 1rem;
+    max-width: 900px;
+    width: 100%;
 }
-
+fieldset {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+}
+input, select, textarea {
+    width: 100%;
+    padding: .5rem .6rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+.row-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+small {
+    color: #666;
+}
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.checkbox-grid label {
+    display: inline-flex;
+    align-items: center;
+}
+.smart-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+}
+.smart-search .tag {
+    background: #5a6478;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+.smart-search .tag span {
+    margin-left: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.smart-search input[type="text"] {
+    border: none;
+    outline: none;
+    flex: 1;
+    min-width: 120px;
+    font-size: 0.95rem;
+}
 @media (max-width: 700px) {
   .top-nav {
     flex-direction: column;
@@ -125,113 +173,10 @@ button, .btn {
   .nav-left, .nav-right {
     justify-content: center;
   }
-  .user-actions {
-    flex-direction: column;
-    align-items: center;
+  .user-label {
+    margin-top: .5rem;
   }
   .top-nav a {
     width: 100%;
-    text-align: center;
   }
 }
-/* --- Karty --- */
-.card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-/* --- Styl toolbaru rutiny --- */
-.routine-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.8rem;
-}
-
-.toolbar-left,
-.toolbar-center,
-.toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.toolbar-left form {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    width: auto;
-}
-
-/* Oprava zarovnání checkboxu a tlačítka ve toolbaru */
-.toolbar-left label {
-    display: inline-flex;      /* ✅ zajistí, že checkbox a text jsou v řádku */
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0;
-    font-size: .95rem;
-    color: #333;
-}
-
-.toolbar-left input[type="checkbox"] {
-    transform: scale(1.15);
-    margin: 0;
-}
-
-
-.toolbar-center {
-    flex: 1;
-    justify-content: center;
-}
-
-.toolbar-right {
-    justify-content: flex-end;
-}
-
-.btn {
-    background: #0d6efd;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 0.55rem 1.1rem;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-}
-.btn:hover { background: #0b5ed7; }
-
-.btn-secondary {
-    background: #e5e7eb;
-    color: #111;
-    border-radius: 8px;
-    padding: 0.55rem 1.1rem;
-    text-decoration: none;
-    font-weight: 500;
-}
-.btn-secondary:hover { background: #d1d5db; }
-
-.btn.danger {
-    background: #ef4444;
-    color: #fff;
-}
-.btn.danger:hover { background: #dc2626; }
-
-@media (max-width: 800px) {
-    .routine-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.7rem;
-    }
-    .toolbar-left,
-    .toolbar-center,
-    .toolbar-right {
-        justify-content: center;
-        width: 100%;
-    }
-}
-
-
-

@@ -1,18 +1,28 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8">
     <title>Rutiny – seznam</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
-        table { width:100%; border-collapse: collapse; }
-        th, td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #e5e7eb; }
-        th { background:#f9fafb; }
-        .btn { padding:.4rem .7rem; border:1px solid #d1d5db; border-radius:8px; text-decoration:none; color:#111; background:#fff; }
-        .btn:hover { background:#f3f4f6; }
-        .muted { color:#6b7280; font-size:.95rem; }
+        table {
+            margin-top: 1rem;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: .6rem .5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .btn {
+            padding: .4rem .7rem;
+            border: 1px solid #d1d5db;
+            text-decoration: none;
+            color: #111;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -26,16 +36,11 @@
     <div class="nav-right">
         <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
-            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
         </div>
     </div>
 </nav>
-
-
-{% if routines|length == 0 %}
-<p class="muted">Zatím nemáš žádné rutiny.</p>
-{% else %}
 <table>
     <thead>
     <tr>
@@ -44,7 +49,6 @@
         <th>Autor</th>
         {% endif %}
         <th>Vytvořeno</th>
-        <th>Popis</th>
         <th>Akce</th>
     </tr>
     </thead>
@@ -56,13 +60,6 @@
         <td class="muted">{{ r.author_name or "?" }}</td>
         {% endif %}
         <td class="muted">{{ r.created_at }}</td>
-        <td class="muted">
-            {% if r.description %}
-            {{ r.description }}
-            {% else %}
-            <span style="color:#9ca3af;">(bez popisu)</span>
-            {% endif %}
-        </td>
         <td>
             <a class="btn" href="/routines/{{ r.id }}">Detail</a>
         </td>
@@ -70,6 +67,5 @@
     {% endfor %}
     </tbody>
 </table>
-{% endif %}
 </body>
 </html>

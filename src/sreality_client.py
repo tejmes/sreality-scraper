@@ -252,8 +252,6 @@ def to_card(item: dict[str, Any]) -> dict[str, Any]:
         "lesy": "les",
         "zahrady": "zahrada",
         "rybniky": "rybnik",
-        "sady-vinice": "sad-vinice",
-        "ostatni-pozemky": "ostatni-pozemek",
     }
     if cs in singular_fixes:
         cs = singular_fixes[cs]

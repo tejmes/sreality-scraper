@@ -7,18 +7,16 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
-    <div class="card" style="max-width:400px;margin:auto;">
-        <h1>Přihlášení</h1>
-        {% if error %}
-        <div class="muted" style="color:#dc2626;">{{ error }}</div>
-        {% endif %}
-        <form method="post" action="/login">
-            <input type="text" name="username" placeholder="Uživatel" required>
-            <input type="password" name="password" placeholder="Heslo" required>
-            <button type="submit">Přihlásit se</button>
-        </form>
-    </div>
+<div class="card" style="max-width:400px;margin:auto;">
+    <h1 style="margin-top:0;text-align:center;">Přihlášení</h1>
+    {% if error %}
+    <div style="color:#dc2626;">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/login">
+        <input type="text" name="username" placeholder="Uživatel" required>
+        <input type="password" name="password" placeholder="Heslo" required>
+        <button type="submit">Přihlásit se</button>
+    </form>
 </div>
 </body>
 </html>

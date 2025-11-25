@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
         .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
         .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
         .toolbar a:hover { background:#d1d5db; }
@@ -27,17 +26,14 @@
     <div class="nav-right">
         <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
-            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
         </div>
     </div>
 </nav>
-
-
-<form method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen">
+<form style="margin-top:1rem;" method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen">
     <button type="submit" class="btn">Označit jako viděné</button>
 </form>
-
 <div class="toolbar" style="margin-top: 2rem;">
     <a href="{{ sreality_url }}" target="_blank" title="Otevřít na Sreality.cz">🌐 Otevřít na Sreality.cz</a>
 </div>

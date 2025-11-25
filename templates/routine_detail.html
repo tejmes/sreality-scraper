@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8">
     <title>Rutina – detail</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:2rem; }
         .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
         .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
         .toolbar a:hover { background:#d1d5db; }
-        .card { border:1px solid #e5e7eb; border-radius:12px; padding:1rem; background:#fff; }
+        .card { border:1px solid #e5e7eb; border-radius:12px; margin-top:1rem; padding:1rem; background:#fff; }
         .row { display:grid; gap:1rem; grid-template-columns: 1fr auto; align-items:center; }
         input[type="text"] { width:100%; padding:.5rem .6rem; border:1px solid #ccc; border-radius:6px; }
         button, .btn { padding:.6rem 1rem; border:0; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
@@ -18,7 +17,12 @@
         .danger { background:#ef4444; }
         .danger:hover { background:#dc2626; }
         pre { background:#0b1020; color:#e5e7eb; padding:12px; border-radius:8px; overflow:auto; font-size:.9rem; }
-        .muted { color:#6b7280; }
+        form {
+            max-width: none;
+        }
+        h3 {
+            margin-top:0;
+        }
         form.inline { display:inline; }
         .row-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
         label { display:flex; align-items:center; gap:.5rem; }
@@ -66,6 +70,26 @@
             margin: 0 auto;
             animation: spin 0.9s linear infinite;
         }
+        .routine-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+        .toolbar-left,
+        .toolbar-center,
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .toolbar-left form {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            width: auto;
+        }
     </style>
 </head>
 <body>
@@ -79,21 +103,18 @@
     <div class="nav-right">
         <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
-            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
         </div>
     </div>
 </nav>
-
-
-<div class="card" style="margin-bottom:1rem;">
+<div class="card">
     <form class="row" action="/routines/{{ routine.id }}/update_name" method="post">
         <input type="text" name="new_name" value="{{ routine.name }}" placeholder="Název rutiny">
         <button type="submit">Uložit název</button>
     </form>
 </div>
-
-<div class="card" style="margin-bottom:1.5rem;">
+<div class="card">
     <div class="routine-toolbar">
         <div class="toolbar-left">
             <form id="run-form" class="inline" action="/routines/{{ routine.id }}/run" method="post">
@@ -101,11 +122,9 @@
                 <button type="submit" class="btn">▶️ Spustit teď</button>
             </form>
         </div>
-
         <div class="toolbar-center">
-            <a href="/routines/{{ routine.id }}/new" class="btn-secondary">🆕 Nové inzeráty</a>
+            <a href="/routines/{{ routine.id }}/new" class="btn">🆕 Nové inzeráty</a>
         </div>
-
         <div class="toolbar-right">
             <form action="/routines/{{ routine.id }}/delete" method="post"
                   onsubmit="return confirm('Opravdu smazat tuto rutinu včetně jejích dat?');">
@@ -114,8 +133,6 @@
         </div>
     </div>
 </div>
-
-
 <!-- Modal -->
 <div id="loading-modal">
     <div class="box">
@@ -129,18 +146,15 @@
         </div>
     </div>
 </div>
-
 <div class="card" style="margin-bottom:1rem;">
     <h3>Popis rutiny</h3>
     <form action="/routines/{{ routine.id }}/update_description" method="post" style="margin-top:.5rem;">
-        <textarea name="new_description" rows="4"
-                  placeholder="Popis rutiny (např. Sleduj stavební pozemky do 3 mil. Kč ve Středočeském kraji)">{{ routine.description }}</textarea>
+        <textarea name="new_description" rows="4">{{ routine.description }}</textarea>
         <div style="margin-top:.5rem; display:flex; gap:.5rem;">
             <button type="submit">Uložit popis</button>
         </div>
     </form>
 </div>
-
 <div class="card">
     <h3>Souhrn</h3>
     <p><b>Naposledy spuštěno:</b> {{ routine.last_run or "zatím nikdy" }}</p>
@@ -159,9 +173,7 @@
         Pouze ručně
         {% endif %}
     </p>
-
 </div>
-
 <div class="card">
     <h3>Plán spouštění</h3>
     <form action="/routines/{{ routine.id }}/update_schedule" method="post">
@@ -171,49 +183,41 @@
             <option value="daily">Denně</option>
             <option value="weekly">Týdně</option>
         </select>
-
         <div id="time-container" style="margin-top:8px;">
             <label>Časy spuštění (odděl čárkou, např. 08:00,20:00):</label>
             <input type="text" name="schedule_times" value="08:00">
         </div>
-
         <div id="day-container" style="margin-top:8px; display:none;">
             <label>Dny (mon,tue,wed,thu,fri,sat,sun):</label>
             <input type="text" name="schedule_days" value="mon,wed,fri">
         </div>
-
         <button type="submit" style="margin-top:8px;">Uložit plán</button>
     </form>
-
-    <div class="card" style="margin-bottom:1rem;">
-        <h3>E-mailová upozornění</h3>
-        <form action="/routines/{{ routine.id }}/update_emails" method="post">
-            <label>Zasílat e-maily na:</label>
-            <input type="text" name="emails"
-                   value="{{ routine.emails | join(', ') }}"
-                   placeholder="např. muj@email.cz, dalsi@email.cz">
-            <button type="submit">Uložit e-maily</button>
-        </form>
-    </div>
-
-    <script>
-        function toggleScheduleOptions() {
-          const val = document.getElementById('schedule_type').value;
-          document.getElementById('time-container').style.display = val === 'manual' ? 'none' : 'block';
-          document.getElementById('day-container').style.display = val === 'weekly' ? 'block' : 'none';
-        }
-        window.addEventListener('load', toggleScheduleOptions);
-    </script>
 </div>
-
-
+<div class="card" style="margin-bottom:1rem;">
+    <h3>E-mailová upozornění</h3>
+    <form action="/routines/{{ routine.id }}/update_emails" method="post">
+        <label>Zasílat e-maily na:</label>
+        <input type="text" name="emails"
+               value="{{ routine.emails | join(', ') }}"
+               placeholder="např. muj@email.cz, dalsi@email.cz">
+        <button type="submit">Uložit e-maily</button>
+    </form>
+</div>
+{% if is_admin %}
 <div class="card">
     <h3>Uložené filtry</h3>
     <pre>{{ routine.filters | tojson(indent=2) }}</pre>
-    <div class="muted">Pozn.: úprava filtrů přijde později. Zatím lze měnit název, popis a rutinu spouštět/smazat.</div>
 </div>
-
+{% endif %}
 <script>
+    function toggleScheduleOptions() {
+      const val = document.getElementById('schedule_type').value;
+      document.getElementById('time-container').style.display = val === 'manual' ? 'none' : 'block';
+      document.getElementById('day-container').style.display = val === 'weekly' ? 'block' : 'none';
+    }
+    window.addEventListener('load', toggleScheduleOptions);
+
     const modal = document.getElementById("loading-modal");
     const runForm = document.getElementById("run-form");
 
@@ -234,6 +238,5 @@
         }
     });
 </script>
-
 </body>
 </html>

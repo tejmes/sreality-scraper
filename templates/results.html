@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8">
     <title>Výsledky</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
     <style>
         body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
@@ -30,17 +30,14 @@
     <div class="nav-right">
         <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
-            <a href="/user/reset_password" class="btn-secondary">🔑 Změnit heslo</a>
+            <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
         </div>
     </div>
 </nav>
-
-
 {% if filters.routine_id and filters.only_new %}
-<form method="post" action="/routines/{{ filters.routine_id }}/mark_all_seen" style="margin-bottom: 1rem;">
-    <button type="submit"
-            onclick="return confirm('Opravdu označit všechny nové inzeráty jako zhlédnuté?');"
+<form style="margin-top:1rem;max-width:none;" method="post" action="/routines/{{ filters.routine_id }}/mark_all_seen" style="margin-bottom: 1rem;">
+    <button type="submit" onclick="return confirm('Opravdu označit všechny nové inzeráty jako zhlédnuté?');"
             style="
                 background:#dc2626;
                 color:white;
@@ -54,12 +51,9 @@
     </button>
 </form>
 {% endif %}
-
-
 {% set routine_id = filters.get('routine_id') %}
-
 <div class="toolbar">
-    <a class="btn" href="/">← Zpět na vyhledávání</a>
+    <a class="btn" style="margin-top:1rem;text-decoration:none;" href="/">← Zpět na vyhledávání</a>
     <div class="muted">
         {% if pagination.total is not none %}
         Nalezeno celkem: <strong>{{ pagination.total }}</strong>,
@@ -71,7 +65,6 @@
         <pre>{{ filters | tojson(indent=2) }}</pre>
     </details>
 </div>
-
 <div class="cards">
     {% if cards|length == 0 %}
     <div class="muted">Žádné výsledky.</div>
@@ -89,7 +82,6 @@
         <div class="muted">{{ c.locality }}</div>
         {% endif %}
         <div class="meta">
-            {% if c.area %}Plocha: {{ c.area }} m²<br>{% endif %}
             {% if c.price %}
             Cena: <b>{{ "{:,}".format(c.price).replace(",", " ") }}</b> Kč
             {% else %}
@@ -100,7 +92,6 @@
     {% endfor %}
     {% endif %}
 </div>
-
 <div class="pager">
     <!-- Prev -->
     <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
@@ -119,7 +110,6 @@
         <input type="hidden" name="limit" value="{{ pagination.limit }}">
         <button class="btn" {% if not pagination.has_prev %}disabled{% endif %}>‹ Předchozí</button>
     </form>
-
     <!-- Next -->
     <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
         {% for k,v in filters.items() %}
@@ -137,10 +127,9 @@
         <input type="hidden" name="limit" value="{{ pagination.limit }}">
         <button class="btn" {% if not pagination.has_next %}disabled{% endif %}>Další ›</button>
     </form>
-
     <!-- Skok na offset -->
     <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}"
-          style="margin-left:auto; display:flex; gap:8px; flex-wrap: wrap;">
+          style="display:flex; gap:8px; flex-wrap: wrap;">
         {% for k,v in filters.items() %}
         {% if v is not none %}
         {% if v is iterable and not v is string %}
@@ -158,7 +147,6 @@
         <button class="btn">Jdi</button>
     </form>
 </div>
-
 <details style="margin-top:16px;">
     <summary>Syrový JSON (první položka)</summary>
     {% if items|length %}
@@ -167,6 +155,5 @@
     <div class="muted">Žádná položka k zobrazení.</div>
     {% endif %}
 </details>
-
 </body>
 </html>
