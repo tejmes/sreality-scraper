@@ -64,6 +64,9 @@ btn-secondary:hover {
 .btn-main:hover {
     background: #0b5ed7;
 }
+a:hover {
+    background: #d1d5db;
+}
 a.btn:hover {
     background: #0b5ed7 !important;
     color: #fff !important;

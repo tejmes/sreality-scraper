@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from pathlib import Path
 from typing import List, Optional, Dict
 from fastapi import FastAPI, Request, Form
@@ -499,15 +503,13 @@ def routines_create(
         "offset": 0,
     }
 
-    # --- Naplánování rutiny ---
-    schedule = None
-    if schedule_type != "manual":
-        sched = {"type": schedule_type}
-        if schedule_times:
-            sched["times"] = [t.strip() for t in schedule_times.split(",") if t.strip()]
-        if schedule_type == "weekly" and schedule_days:
-            sched["days"] = [d.strip().lower() for d in schedule_days.split(",") if d.strip()]
-        schedule = sched
+    # --- nový jednoduchý systém plánování ---
+    times = [t.strip() for t in (schedule_times or "").split(",") if t.strip()]
+
+    if times:
+        schedule = {"type": "daily", "times": times}
+    else:
+        schedule = None
 
     uid = get_current_user_id(request)
     if not uid:
@@ -704,28 +706,7 @@ def routines_run(
 
     cards = [to_card(r) for r in displayed_items]
 
-    return render(
-        request,
-        "results.html",
-        {
-            "items": all_items,
-            "cards": cards,
-            "pagination": {
-                "total": len(all_items),
-                "limit": 0,
-                "offset": 0,
-                "has_prev": False,
-                "has_next": False,
-                "prev_offset": 0,
-                "next_offset": 0,
-            },
-            "filters": {
-                **{k: f.get(k) for k in f.keys()},
-                "routine_id": routine_id,
-                "only_new": bool(only_new),
-            },
-        },
-    )
+    return RedirectResponse(f"/routines/{routine_id}/results", status_code=303)
 
 
 @app.get("/routines/{routine_id}/ad/{hash_id}", response_class=HTMLResponse)
@@ -770,6 +751,12 @@ def ad_detail(request: Request, routine_id: str, hash_id: int):
         "seo": {"locality": estate.get("city") or ""},
     })["url"]
 
+    ref = request.headers.get("referer", "")
+
+    # Pokud referer vede na POST run → vrať na GET výsledky rutiny
+    if ("/run" in ref) or (ref == ""):
+        ref = f"/routines/{routine_id}/results"
+
     return render(
         request,
         "ad_detail.html",
@@ -778,7 +765,7 @@ def ad_detail(request: Request, routine_id: str, hash_id: int):
             "estate": estate,
             "history": history,
             "sreality_url": sreality_url,
-            "back_to_results_url": request.headers.get("referer", "/search"),
+            "back_to_results_url": ref,
         },
     )
 
@@ -1043,9 +1030,7 @@ def admin_reset_password(request: Request, user_id: int):
 @app.post("/routines/{routine_id}/update_schedule")
 def routines_update_schedule(
         routine_id: str,
-        schedule_type: str = Form(...),
         schedule_times: Optional[str] = Form(None),
-        schedule_days: Optional[str] = Form(None),
 ):
     from src.routines_storage import _load_index, _save_index, get_routine
     doc = _load_index()
@@ -1053,15 +1038,12 @@ def routines_update_schedule(
     for r in doc["routines"]:
         if r["id"] == routine_id:
             routine = r
-            if schedule_type == "manual":
-                r["schedule"] = None
+            # nový jednoduchý systém – každé HH:MM je "daily"
+            times = [t.strip() for t in schedule_times.split(",") if t.strip()] if schedule_times else []
+            if times:
+                r["schedule"] = {"type": "daily", "times": times}
             else:
-                sched = {"type": schedule_type}
-                if schedule_times:
-                    sched["times"] = [t.strip() for t in schedule_times.split(",") if t.strip()]
-                if schedule_type == "weekly" and schedule_days:
-                    sched["days"] = [d.strip().lower() for d in schedule_days.split(",") if d.strip()]
-                r["schedule"] = sched
+                r["schedule"] = None
             break
     _save_index(doc)
 
@@ -1282,6 +1264,54 @@ def routines_new(request: Request, routine_id: str):
             "cards": cards,
             "pagination": {"total": len(rows), "limit": 0, "offset": 0, "has_prev": False, "has_next": False},
             "filters": {"routine_id": routine_id, "only_new": True},
+        },
+    )
+
+
+@app.get("/routines/{routine_id}/results", response_class=HTMLResponse)
+def routines_results_page(request: Request, routine_id: str):
+    routine = get_routine(routine_id)
+    if not routine:
+        return HTMLResponse("Rutina nenalezena.", status_code=404)
+
+    dbp = routine_db_path(routine_id)
+    con = sqlite3.connect(dbp)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("SELECT * FROM estates")
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+
+    cards = [to_card({
+        "hash_id": r["hash_id"],
+        "advert_name": r["advert_name"],
+        "locality": {
+            "city": r.get("city"),
+            "district": r.get("district"),
+            "region": r.get("region_name"),
+        },
+        "category_main_cb": {"value": r.get("category_main")},
+        "category_type_cb": {"value": r.get("category_type")},
+        "category_sub_cb": {"value": r.get("category_sub")},
+        "price_czk": r.get("price_czk"),
+        "seo": {"locality": r.get("city") or ""},
+    }) for r in rows]
+
+    return render(
+        request,
+        "results.html",
+        {
+            "items": rows,
+            "cards": cards,
+            "pagination": {
+                "total": len(rows),
+                "limit": 0,
+                "offset": 0,
+                "has_prev": False,
+                "has_next": False,
+            },
+            "filters": {"routine_id": routine_id},
+            "back_link": f"/routines/{routine_id}"
         },
     )
 

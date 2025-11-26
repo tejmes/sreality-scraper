@@ -190,32 +190,41 @@
     </p>
 </div>
 <div class="card">
-    <h3>Plán spouštění</h3>
+    <h3>Plán spouštění (každý den)</h3>
     <form action="/routines/{{ routine.id }}/update_schedule" method="post">
-        <label>Typ:</label>
-        <select name="schedule_type" id="schedule_type" onchange="toggleScheduleOptions()">
-            <option value="manual" {% if routine.schedule is none %}selected{% endif %}>Pouze ručně</option>
-            <option value="daily">Denně</option>
-            <option value="weekly">Týdně</option>
-        </select>
-        <div id="time-container" style="margin-top:8px;">
-            <label>Časy spuštění (odděl čárkou, např. 08:00,20:00):</label>
-            <input type="text" name="schedule_times" value="08:00">
+        <label>Časy spuštění:</label>
+
+        <div id="time-tags" class="smart-search">
+            <input type="text" id="time-input" placeholder="Zadejte čas (např. 08:00) a potvrďte Enter">
+            <input type="hidden" id="schedule_times" name="schedule_times"
+                   value="{% if routine.schedule %}
+                 {% if routine.schedule is string %}
+                     {% if '@' in routine.schedule %}
+                         {{ routine.schedule.split('@')[1] }}
+                     {% elif '{' in routine.schedule %}
+                         {{ (routine.schedule | fromjson).times | join(',') }}
+                     {% else %}
+                         {{ routine.schedule }}
+                     {% endif %}
+                 {% else %}
+                     {{ routine.schedule.times | join(',') }}
+                 {% endif %}
+              {% endif %}">
+
         </div>
-        <div id="day-container" style="margin-top:8px; display:none;">
-            <label>Dny (mon,tue,wed,thu,fri,sat,sun):</label>
-            <input type="text" name="schedule_days" value="mon,wed,fri">
-        </div>
-        <button type="submit" style="margin-top:8px;">Uložit plán</button>
+
+        <button type="submit" style="margin-top:10px;">Uložit plán</button>
     </form>
 </div>
+
 <div class="card" style="margin-bottom:1rem;">
     <h3>E-mailová upozornění</h3>
     <form action="/routines/{{ routine.id }}/update_emails" method="post">
         <label>Zasílat e-maily na:</label>
-        <input type="text" name="emails"
-               value="{{ routine.emails | join(', ') }}"
-               placeholder="např. muj@email.cz, dalsi@email.cz">
+        <div id="email-tags" class="smart-search">
+            <input type="text" id="email-input" placeholder="Zadejte e-mail a potvrďte Enter">
+            <input type="hidden" id="emails" name="emails" value="{{ routine.emails | join(',') }}">
+        </div>
         <button type="submit">Uložit e-maily</button>
     </form>
 </div>
@@ -252,6 +261,141 @@
             modal.style.display = "none";
         }
     });
+
+    const  emailInput = document.getElementById("email-input");
+    const emailHidden = document.getElementById("emails");
+    const emailContainer = document.getElementById("email-tags");
+
+    let emailList = [];
+
+    // vytvoření tagů
+    function renderEmailTags() {
+        emailContainer.querySelectorAll(".tag").forEach(t => t.remove());
+
+        emailList.forEach(email => {
+            const el = document.createElement("div");
+            el.className = "tag";
+            el.innerHTML = `${email}<span data-email="${email}">&times;</span>`;
+            emailContainer.insertBefore(el, emailInput);
+        });
+
+        emailHidden.value = emailList.join(",");
+    }
+
+    emailInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const value = emailInput.value.trim();
+            if (!value) return;
+
+            // validace
+            const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            if (!valid) {
+                emailInput.style.border = "1px solid red";
+                setTimeout(() => emailInput.style.border = "", 800);
+                return;
+            }
+
+            if (!emailList.includes(value)) {
+                emailList.push(value);
+                renderEmailTags();
+            }
+
+            emailInput.value = "";
+        }
+    });
+
+    emailContainer.addEventListener("click", (e) => {
+        if (e.target.tagName === "SPAN") {
+            const val = e.target.getAttribute("data-email");
+            emailList = emailList.filter(v => v !== val);
+            renderEmailTags();
+        }
+    });
+
+    // při načtení stránky — načti existující uložené emaily
+    window.addEventListener("load", () => {
+        const existing = emailHidden.value.split(",").map(x => x.trim()).filter(Boolean);
+        if (existing.length) {
+            emailList = existing;
+            renderEmailTags();
+        }
+    });
+
+    // ===================== ČASY – TAGY =====================
+
+const timeInput = document.getElementById("time-input");
+const timeHidden = document.getElementById("schedule_times");
+const timeContainer = document.getElementById("time-tags");
+
+let timeList = [];
+
+// render tagů
+function renderTimeTags() {
+    timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
+
+    timeList.forEach(t => {
+        const el = document.createElement("div");
+        el.className = "tag";
+        el.innerHTML = `${t}<span data-time="${t}">&times;</span>`;
+        timeContainer.insertBefore(el, timeInput);
+    });
+
+    timeHidden.value = timeList.join(",");
+}
+
+// Enter -> přidání času
+timeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        let value = timeInput.value.trim();
+
+        if (!value) return;
+
+        // validace času HH:MM
+        const match = /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+        if (!match) {
+            timeInput.style.border = "1px solid red";
+            setTimeout(() => timeInput.style.border = "", 800);
+            return;
+        }
+
+        if (!timeList.includes(value)) {
+            timeList.push(value);
+            renderTimeTags();
+        }
+
+        timeInput.value = "";
+    }
+});
+
+// mazání tagu (klik na ×)
+timeContainer.addEventListener("click", (e) => {
+    if (e.target.tagName === "SPAN") {
+        const val = e.target.getAttribute("data-time");
+        timeList = timeList.filter(t => t !== val);
+        renderTimeTags();
+    }
+});
+
+// při načtení stránky → nacpat existující uložené časy
+window.addEventListener("load", () => {
+    let raw = timeHidden.value.trim();
+    if (!raw) return;
+
+    // starý formát: "daily@08:00"
+    if (raw.includes("@")) {
+        raw = raw.split("@")[1];
+    }
+
+    const existing = raw.split(",").map(x => x.trim()).filter(Boolean);
+    if (existing.length) {
+        timeList = existing;
+        renderTimeTags();
+    }
+});
+
+
 </script>
 </body>
 </html>

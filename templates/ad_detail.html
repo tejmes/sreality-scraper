@@ -68,9 +68,9 @@
     </form>
 </div>
 <div class="card">
+    <h2 style="margin-top:0;">{{ estate.advert_name }}</h2>
     <p><strong>Místo:</strong> {{ estate.city or "-" }} {% if estate.region_name %}({{ estate.region_name }}){% endif %}
     </p>
-    <p><strong>Plocha:</strong> {{ estate.area_m2 or "-" }} m²</p>
     <p><strong>Aktuální cena:</strong> {{ estate.price_czk or "-" }} Kč</p>
 </div>
 <div class="card" style="margin-top:1.5rem;">
