@@ -9,7 +9,9 @@
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>

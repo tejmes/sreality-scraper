@@ -9,13 +9,15 @@
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
@@ -40,7 +42,7 @@
             <option value="weekly">Týdně</option>
         </select>
         <div id="time-container" style="margin-top:8px;">
-            <label for="schedule_times">Časy spuštění (odděl čárkou, např. 08:00,20:00)</label>
+            <label for="schedule_times">Časy spuštění (odděl čárkou, např. 08:00, 20:00)</label>
             <input id="schedule_times" name="schedule_times" type="text" placeholder="např. 08:00,20:00" value="08:00">
         </div>
         <div id="day-container" style="margin-top:8px; display:none;">
@@ -124,7 +126,8 @@
         <div class="row-2" style="margin-top:1rem">
             <div style="position: relative;">
                 <label for="locality_search_name">Adresa</label>
-                <input id="locality_search_name" name="locality_search_name" type="text" placeholder="např. Brno" autocomplete="off">
+                <input id="locality_search_name" name="locality_search_name" type="text" placeholder="např. Brno"
+                       autocomplete="off">
                 <input type="hidden" id="locality_entity_type" name="locality_entity_type">
                 <input type="hidden" id="locality_entity_id" name="locality_entity_id">
                 <ul id="suggestions" style="
@@ -212,7 +215,6 @@
     <div style="display:flex; gap:1rem;">
         <button type="submit">Vytvořit rutinu</button>
         <button type="button" id="reset-filters" style="background:#6b7280;">Vymazat</button>
-        <a href="/routines" style="background:#6b7280; color:#fff; text-decoration:none; padding:.7rem 1rem; border-radius:8px; display:inline-flex; align-items:center;">Zpět na seznam rutin</a>
     </div>
 </form>
 <script>

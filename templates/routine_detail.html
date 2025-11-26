@@ -6,43 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
-        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
-        .toolbar a:hover { background:#d1d5db; }
-        .card { border:1px solid #e5e7eb; border-radius:12px; margin-top:1rem; padding:1rem; background:#fff; }
-        .row { display:grid; gap:1rem; grid-template-columns: 1fr auto; align-items:center; }
-        input[type="text"] { width:100%; padding:.5rem .6rem; border:1px solid #ccc; border-radius:6px; }
-        button, .btn { padding:.6rem 1rem; border:0; border-radius:8px; background:#0d6efd; color:#fff; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
-        button:hover, .btn:hover { background:#0b5ed7; }
-        .danger { background:#ef4444; }
-        .danger:hover { background:#dc2626; }
-        pre { background:#0b1020; color:#e5e7eb; padding:12px; border-radius:8px; overflow:auto; font-size:.9rem; }
+        .card {
+            margin-top: 1rem;
+        }
+        .row {
+            grid-template-columns: 1fr auto;
+        }
+        button, .btn {
+            text-decoration: none;
+        }
+        a.btn:hover {
+            background: #0b5ed7 !important;
+        }
         form {
             max-width: none;
         }
         h3 {
-            margin-top:0;
+            margin-top: 0;
         }
-        form.inline { display:inline; }
-        .row-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
-        label { display:flex; align-items:center; gap:.5rem; }
-        input[type="checkbox"] { transform: scale(1.15); }
-        textarea {
-            width: 100%;
-            padding: .6rem .7rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: .95rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 90px;
+        label {
+            display: flex;
+            align-items: center;
         }
         textarea:focus {
             outline: none;
             border-color: #0d6efd;
             box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
         }
-        /* Modal styles */
         #loading-modal {
             position: fixed;
             inset: 0;
@@ -72,10 +62,16 @@
         }
         .routine-toolbar {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.8rem;
+            flex-wrap: nowrap;
+            position: relative;
+        }
+        .toolbar-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
         }
         .toolbar-left,
         .toolbar-center,
@@ -90,18 +86,36 @@
             gap: 0.6rem;
             width: auto;
         }
+        @media (max-width: 780px) {
+            .routine-toolbar {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.8rem;
+            }
+            .toolbar-left,
+            .toolbar-center,
+            .toolbar-right {
+                position: static !important;
+                transform: none !important;
+                margin: 0;
+                width: auto;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
@@ -109,17 +123,11 @@
     </div>
 </nav>
 <div class="card">
-    <form class="row" action="/routines/{{ routine.id }}/update_name" method="post">
-        <input type="text" name="new_name" value="{{ routine.name }}" placeholder="Název rutiny">
-        <button type="submit">Uložit název</button>
-    </form>
-</div>
-<div class="card">
     <div class="routine-toolbar">
         <div class="toolbar-left">
             <form id="run-form" class="inline" action="/routines/{{ routine.id }}/run" method="post">
-                <label><input type="checkbox" name="only_new" value="1"> pouze nové</label>
                 <button type="submit" class="btn">▶️ Spustit teď</button>
+                <label><input type="checkbox" name="only_new" value="1"> pouze nové</label>
             </form>
         </div>
         <div class="toolbar-center">
@@ -145,6 +153,13 @@
             <div class="spinner"></div>
         </div>
     </div>
+</div>
+<div class="card">
+    <h3>Název rutiny</h3>
+    <form class="row" action="/routines/{{ routine.id }}/update_name" method="post">
+        <input type="text" name="new_name" value="{{ routine.name }}" placeholder="Název rutiny">
+        <button type="submit">Uložit název</button>
+    </form>
 </div>
 <div class="card" style="margin-bottom:1rem;">
     <h3>Popis rutiny</h3>

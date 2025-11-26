@@ -28,13 +28,15 @@
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>

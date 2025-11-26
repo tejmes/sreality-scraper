@@ -214,6 +214,14 @@ templates = Jinja2Templates(directory=str(ROOT / "templates"))
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
+def render(request: Request, template: str, context: dict = None):
+    ctx = context or {}
+    ctx["request"] = request
+    ctx["is_admin"] = bool(request.session.get("is_admin"))
+    ctx["username"] = request.session.get("username")
+    return templates.TemplateResponse(template, ctx)
+
+
 def require_login(request: Request):
     """Dependency that redirects to /login if user is not logged in."""
     if not request.session.get("user_id"):
@@ -235,7 +243,7 @@ def index(request: Request):
 def search_page(request: Request):
     if not get_current_user_id(request):
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("index.html", {"request": request})
+    return render(request, "index.html")
 
 
 @app.get("/autocomplete")
@@ -384,10 +392,10 @@ def search(
     has_prev = off > 0
     has_next = off + lim < total
 
-    return templates.TemplateResponse(
+    return render(
+        request,
         "results.html",
         {
-            "request": request,
             "items": items,
             "cards": cards,
             "pagination": {
@@ -430,7 +438,7 @@ def search(
 def routine_index(request: Request):
     if not get_current_user_id(request):
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("routine.html", {"request": request})
+    return render(request, "routine.html")
 
 
 @app.post("/routines/create")
@@ -556,14 +564,7 @@ def routines_list(request: Request):
     else:
         routines = list_routines(user_id=uid)
 
-    return templates.TemplateResponse(
-        "routines.html",
-        {
-            "request": request,
-            "routines": routines,
-            "is_admin": is_admin(request),
-        },
-    )
+    return render(request, "routines.html", {"routines": routines})
 
 
 @app.get("/routines/{routine_id}", response_class=HTMLResponse)
@@ -574,7 +575,7 @@ def routines_detail(request: Request, routine_id: str):
     routine = get_routine(routine_id)
     deny = _ensure_can_access_routine(request, routine)
     if deny: return deny
-    return templates.TemplateResponse("routine_detail.html", {"request": request, "routine": routine, "is_admin": is_admin(request)})
+    return render(request, "routine_detail.html", {"routine": routine})
 
 
 @app.post("/routines/{routine_id}/update_name")
@@ -703,10 +704,10 @@ def routines_run(
 
     cards = [to_card(r) for r in displayed_items]
 
-    return templates.TemplateResponse(
+    return render(
+        request,
         "results.html",
         {
-            "request": request,
             "items": all_items,
             "cards": cards,
             "pagination": {
@@ -769,14 +770,15 @@ def ad_detail(request: Request, routine_id: str, hash_id: int):
         "seo": {"locality": estate.get("city") or ""},
     })["url"]
 
-    return templates.TemplateResponse(
+    return render(
+        request,
         "ad_detail.html",
         {
-            "request": request,
             "routine_id": routine_id,
             "estate": estate,
             "history": history,
             "sreality_url": sreality_url,
+            "back_to_results_url": request.headers.get("referer", "/search"),
         },
     )
 
@@ -864,10 +866,10 @@ def routine_run(
     cards = [to_card(x) for x in displayed_items]
     total = len(displayed_items)
 
-    return templates.TemplateResponse(
+    return render(
+        request,
         "results.html",
         {
-            "request": request,
             "items": displayed_items,
             "cards": cards,
             "pagination": {
@@ -913,14 +915,14 @@ def routine_run(
 def login_form(request: Request):
     if is_admin(request):
         return RedirectResponse("/admin", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return render(request, "login.html", {"error": None})
 
 
 @app.post("/login", response_class=HTMLResponse)
 def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
     user = verify_user_password(username, password)
     if not user:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+        return render(request, "login.html", {"error": "Invalid credentials"})
 
     # uložit do session
     request.session["user_id"] = user["id"]
@@ -947,7 +949,7 @@ def user_reset_password_form(request: Request):
     if not uid:
         return RedirectResponse("/login", status_code=303)
 
-    return templates.TemplateResponse("user_reset_password.html", {"request": request, "error": None})
+    return render(request, "user_reset_password.html", {"error": None})
 
 
 @app.post("/user/reset_password", response_class=HTMLResponse)
@@ -968,31 +970,22 @@ def user_reset_password_submit(
 
     # 1️⃣ Ověření starého hesla
     if not verify_user_password(user["username"], old_password):
-        return templates.TemplateResponse(
-            "user_reset_password.html",
-            {"request": request, "error": "Původní heslo je nesprávné."},
-        )
+        return render(request, "user_reset_password.html", {"error": "Původní heslo je nesprávné."})
 
     # 2️⃣ Ověření nového hesla
     if new_password != confirm_password:
-        return templates.TemplateResponse(
-            "user_reset_password.html",
-            {"request": request, "error": "Nová hesla se neshodují."},
-        )
+        return render(request, "user_reset_password.html", {"error": "Nová hesla se neshodují."})
 
     # 3️⃣ Změna v DB
     reset_password(uid, new_password)
-    return templates.TemplateResponse(
-        "user_reset_password.html",
-        {"request": request, "error": "✅ Heslo bylo úspěšně změněno."},
-    )
+    return render(request, "user_reset_password.html", {"error": "✅ Heslo bylo úspěšně změněno."})
 
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("admin.html", {"request": request, "username": get_current_user(request)})
+    return render(request, "admin.html", {"username": get_current_user(request)})
 
 
 # =========================================
@@ -1004,7 +997,7 @@ def admin_users(request: Request):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
     users = list_users()
-    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
+    return render(request, "admin_users.html", {"users": users})
 
 
 @app.post("/admin/users/create")
@@ -1260,14 +1253,37 @@ def routines_new(request: Request, routine_id: str):
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
 
-    cards = [to_card(r) for r in rows]
-    return templates.TemplateResponse("results.html", {
-        "request": request,
-        "items": rows,
-        "cards": cards,
-        "pagination": {"total": len(rows), "limit": 0, "offset": 0, "has_prev": False, "has_next": False},
-        "filters": {"routine_id": routine_id, "only_new": True},
-    })
+    cards = []
+    for r in rows:
+        card_input = {
+            "hash_id": r["hash_id"],
+            "advert_name": r["advert_name"],
+            "locality": {
+                "city": r.get("city"),
+                "district": r.get("district"),
+                "region": r.get("region_name"),
+            },
+            "category_main_cb": {"value": r.get("category_main")},
+            "category_type_cb": {"value": r.get("category_type")},
+            "category_sub_cb": {"value": r.get("category_sub")},
+
+            # 🔥 DŮLEŽITÉ – tato položka opravuje cenu:
+            "price_czk": r.get("price_czk"),
+
+            "seo": {"locality": r.get("city") or ""},
+        }
+        cards.append(to_card(card_input))
+
+    return render(
+        request,
+        "results.html",
+        {
+            "items": rows,
+            "cards": cards,
+            "pagination": {"total": len(rows), "limit": 0, "offset": 0, "has_prev": False, "has_next": False},
+            "filters": {"routine_id": routine_id, "only_new": True},
+        },
+    )
 
 
 @app.post("/routines/{routine_id}/ad/{hash_id}/mark_seen")

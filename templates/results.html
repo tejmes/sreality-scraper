@@ -6,29 +6,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-        .toolbar { display:flex; align-items:center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .cards { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-        .card { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fff; padding: 12px; }
-        .title { font-weight: 600; font-size: 1.1rem; margin-bottom: 4px; }
-        .muted { color: #6b7280; font-size: 0.9rem; }
-        .meta { color:#374151; font-size: .95rem; margin-top: 4px; }
-        .pager { display:flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-        .btn { padding: 8px 12px; border-radius:8px; border:1px solid #d1d5db; cursor:pointer; }
-        .btn[disabled] { opacity: .5; cursor: not-allowed; }
-        pre { background:#0b1020; color:#e5e7eb; padding:12px; border-radius:8px; overflow:auto; }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .cards {
+            display:grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+        }
+        .title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+        .meta {
+            color:#374151;
+            font-size: .95rem;
+            margin-top: 4px;
+        }
+        .pager {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .pager-top {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .btn[disabled] {
+            opacity: .5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
@@ -36,24 +64,21 @@
     </div>
 </nav>
 {% if filters.routine_id and filters.only_new %}
-<form style="margin-top:1rem;max-width:none;" method="post" action="/routines/{{ filters.routine_id }}/mark_all_seen" style="margin-bottom: 1rem;">
+<form style="margin-top:1rem;max-width:none;" method="post" action="/routines/{{ filters.routine_id }}/mark_all_seen"
+      style="margin-bottom: 1rem;">
     <button type="submit" onclick="return confirm('Opravdu označit všechny nové inzeráty jako zhlédnuté?');"
-            style="
-                background:#dc2626;
-                color:white;
-                border:none;
-                padding:0.6rem 1rem;
-                border-radius:8px;
-                cursor:pointer;
-                font-weight:600;
-            ">
+            style="background:#dc2626;">
         Označit všechny jako zhlédnuté
     </button>
 </form>
 {% endif %}
 {% set routine_id = filters.get('routine_id') %}
-<div class="toolbar">
-    <a class="btn" style="margin-top:1rem;text-decoration:none;" href="/">← Zpět na vyhledávání</a>
+<div class="toolbar" style="margin-top:1rem;">
+    {% if routine_id %}
+    <a class="btn" style="text-decoration:none;" href="/routines/{{ routine_id }}">← Zpět na rutinu</a>
+    {% else %}
+    <a class="btn" style="text-decoration:none;" href="/search">← Zpět na vyhledávání</a>
+    {% endif %}
     <div class="muted">
         {% if pagination.total is not none %}
         Nalezeno celkem: <strong>{{ pagination.total }}</strong>,
@@ -93,59 +118,60 @@
     {% endif %}
 </div>
 <div class="pager">
-    <!-- Prev -->
-    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
-        {% for k,v in filters.items() %}
-        {% if v is not none %}
-        {% if v is iterable and not v is string %}
-        {% for vv in v %}
-        <input type="hidden" name="{{ k }}" value="{{ vv }}">
-        {% endfor %}
-        {% else %}
-        <input type="hidden" name="{{ k }}" value="{{ v }}">
-        {% endif %}
-        {% endif %}
-        {% endfor %}
-        <input type="hidden" name="offset" value="{{ pagination.prev_offset }}">
-        <input type="hidden" name="limit" value="{{ pagination.limit }}">
-        <button class="btn" {% if not pagination.has_prev %}disabled{% endif %}>‹ Předchozí</button>
-    </form>
-    <!-- Next -->
-    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
-        {% for k,v in filters.items() %}
-        {% if v is not none %}
-        {% if v is iterable and not v is string %}
-        {% for vv in v %}
-        <input type="hidden" name="{{ k }}" value="{{ vv }}">
-        {% endfor %}
-        {% else %}
-        <input type="hidden" name="{{ k }}" value="{{ v }}">
-        {% endif %}
-        {% endif %}
-        {% endfor %}
-        <input type="hidden" name="offset" value="{{ pagination.next_offset }}">
-        <input type="hidden" name="limit" value="{{ pagination.limit }}">
-        <button class="btn" {% if not pagination.has_next %}disabled{% endif %}>Další ›</button>
-    </form>
-    <!-- Skok na offset -->
-    <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}"
-          style="display:flex; gap:8px; flex-wrap: wrap;">
-        {% for k,v in filters.items() %}
-        {% if v is not none %}
-        {% if v is iterable and not v is string %}
-        {% for vv in v %}
-        <input type="hidden" name="{{ k }}" value="{{ vv }}">
-        {% endfor %}
-        {% else %}
-        <input type="hidden" name="{{ k }}" value="{{ v }}">
-        {% endif %}
-        {% endif %}
-        {% endfor %}
-        <label class="muted">Offset:</label>
-        <input type="number" name="offset" value="{{ pagination.offset }}" min="0" style="width:120px;">
-        <input type="hidden" name="limit" value="{{ pagination.limit }}">
-        <button class="btn">Jdi</button>
-    </form>
+    <div class="pager-top">
+        <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
+            {% for k,v in filters.items() %}
+            {% if v is not none %}
+            {% if v is iterable and not v is string %}
+            {% for vv in v %}
+            <input type="hidden" name="{{ k }}" value="{{ vv }}">
+            {% endfor %}
+            {% else %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            <input type="hidden" name="offset" value="{{ pagination.prev_offset }}">
+            <input type="hidden" name="limit" value="{{ pagination.limit }}">
+            <button class="btn" {% if not pagination.has_prev %}disabled{% endif %}>‹ Předchozí</button>
+        </form>
+        <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}">
+            {% for k,v in filters.items() %}
+            {% if v is not none %}
+            {% if v is iterable and not v is string %}
+            {% for vv in v %}
+            <input type="hidden" name="{{ k }}" value="{{ vv }}">
+            {% endfor %}
+            {% else %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            <input type="hidden" name="offset" value="{{ pagination.next_offset }}">
+            <input type="hidden" name="limit" value="{{ pagination.limit }}">
+            <button class="btn" {% if not pagination.has_next %}disabled{% endif %}>Další ›</button>
+        </form>
+    </div>
+    <div class="pager-bottom">
+        <form method="post" action="{% if routine_id %}/routines/{{ routine_id }}/run{% else %}/search{% endif %}"
+              style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            {% for k,v in filters.items() %}
+            {% if v is not none %}
+            {% if v is iterable and not v is string %}
+            {% for vv in v %}
+            <input type="hidden" name="{{ k }}" value="{{ vv }}">
+            {% endfor %}
+            {% else %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            <label class="muted">Offset:</label>
+            <input type="number" name="offset" value="{{ pagination.offset }}" min="0" style="width:120px;">
+            <input type="hidden" name="limit" value="{{ pagination.limit }}">
+            <button class="btn">Jdi</button>
+        </form>
+    </div>
 </div>
 <details style="margin-top:16px;">
     <summary>Syrový JSON (první položka)</summary>

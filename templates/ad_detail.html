@@ -7,35 +7,65 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
-        .toolbar a { background:#e5e7eb; padding:.5rem 1rem; border-radius:8px; color:#111; text-decoration:none; font-weight:500; }
-        .toolbar a:hover { background:#d1d5db; }
-        .card { border:1px solid #e5e7eb; border-radius:12px; padding:1rem; background:#fff; max-width:800px; }
-        .muted { color:#6b7280; }
-        canvas { max-width:100%; height:300px; }
+        .toolbar {
+            display: flex;
+            gap: .5rem;
+            max-width: 800px;
+            width: 100%;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .toolbar a,
+        .toolbar form {
+            flex: 1;
+            display: flex;
+        }
+        .toolbar a {
+            justify-content: center;
+            align-items: center;
+            background: #e5e7eb;
+            padding: .5rem 1rem;
+            border-radius: 8px;
+            color: #111;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .toolbar a:hover {
+            background: #d1d5db;
+        }
+        .toolbar form button {
+            width: 100%;
+            height: 100%;
+        }
+        .card {
+            max-width: 800px;
+        }
     </style>
 </head>
 <body>
 <nav class="top-nav">
     <div class="nav-left">
+        {% if is_admin %}
         <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako <b>{{ request.session.username }}</b></span>
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
         </div>
     </div>
 </nav>
-<form style="margin-top:1rem;" method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen">
-    <button type="submit" class="btn">Označit jako viděné</button>
-</form>
-<div class="toolbar" style="margin-top: 2rem;">
+<div class="toolbar">
+    <a href="{{ back_to_results_url }}">← Zpět na výsledky</a>
     <a href="{{ sreality_url }}" target="_blank" title="Otevřít na Sreality.cz">🌐 Otevřít na Sreality.cz</a>
+    <form method="post" action="/routines/{{ routine_id }}/ad/{{ estate.hash_id }}/mark_seen" style="display:inline">
+        <button type="submit" class="btn">Označit jako viděné</button>
+    </form>
 </div>
 <div class="card">
     <p><strong>Místo:</strong> {{ estate.city or "-" }} {% if estate.region_name %}({{ estate.region_name }}){% endif %}
@@ -43,7 +73,6 @@
     <p><strong>Plocha:</strong> {{ estate.area_m2 or "-" }} m²</p>
     <p><strong>Aktuální cena:</strong> {{ estate.price_czk or "-" }} Kč</p>
 </div>
-
 <div class="card" style="margin-top:1.5rem;">
     <h3>Vývoj ceny</h3>
     {% if history|length == 0 %}
@@ -74,6 +103,5 @@
     </script>
     {% endif %}
 </div>
-
 </body>
 </html>
