@@ -754,6 +754,7 @@ def routines_run(
         category_main_cb=f.get("category_main_cb"),
         category_type_cb=f.get("category_type_cb"),
         category_sub_cb=f.get("category_sub_cb"),
+        room_count_cb=f.get("room_count_cb"),
         locality_country_id=f.get("locality_country_id") or 112,
         locality_region_id=f.get("locality_region_id"),
         locality_district_id=f.get("locality_district_id"),

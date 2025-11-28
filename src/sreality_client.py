@@ -54,7 +54,10 @@ def build_query(
     _add(params, "category_main_cb", category_main_cb)
     _add(params, "category_type_cb", category_type_cb)
     _add(params, "category_sub_cb", list(category_sub_cb) if category_sub_cb else None)
-    _add(params, "room_count_cb", list(room_count_cb) if room_count_cb else None)
+    # Odfiltruj prázdné hodnoty – Sreality to jinak znefunkční
+    if room_count_cb:
+        clean_rooms = [r for r in room_count_cb if str(r).strip()]
+        _add(params, "room_count_cb", clean_rooms if clean_rooms else None)
     _add(params, "locality_search_name", locality_search_name)
     _add(params, "locality_entity_type", locality_entity_type)
     _add(params, "locality_entity_id", locality_entity_id)
