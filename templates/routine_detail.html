@@ -9,18 +9,14 @@
     <style>
         .card {
             margin-top: 1rem;
-        }
-        .row {
-            grid-template-columns: 1fr auto;
+            background: #fafafa;
+            max-width: 900px;
         }
         button, .btn {
             text-decoration: none;
         }
         a.btn:hover {
             background: #0b5ed7 !important;
-        }
-        form {
-            max-width: none;
         }
         h3 {
             margin-top: 0;
@@ -132,7 +128,7 @@
             </form>
         </div>
         <div class="toolbar-center">
-            <a href="/routines/{{ routine.id }}/new" class="btn">🆕 Nové inzeráty</a>
+            <a href="/routines/{{ routine.id }}/new" class="btn">🆕 Seznam nových inzerátů</a>
         </div>
         <div class="toolbar-right">
             <form action="/routines/{{ routine.id }}/delete" method="post"
@@ -142,7 +138,6 @@
         </div>
     </div>
 </div>
-<!-- Modal -->
 <div id="loading-modal">
     <div class="box">
         <h2 style="margin-bottom:.5rem;">Načítání může chvíli trvat…</h2>
@@ -156,246 +151,612 @@
     </div>
 </div>
 <div class="card">
-    <h3>Název rutiny</h3>
-    <form class="row" action="/routines/{{ routine.id }}/update_name" method="post">
-        <input type="text" name="new_name" value="{{ routine.name }}" placeholder="Název rutiny">
-        <button type="submit">Uložit název</button>
-    </form>
-</div>
-<div class="card" style="margin-bottom:1rem;">
-    <h3>Popis rutiny</h3>
-    <form action="/routines/{{ routine.id }}/update_description" method="post" style="margin-top:.5rem;">
-        <textarea name="new_description" rows="4">{{ routine.description }}</textarea>
-        <div style="margin-top:.5rem; display:flex; gap:.5rem;">
-            <button type="submit">Uložit popis</button>
-        </div>
-    </form>
-</div>
-<div class="card">
     <h3>Souhrn</h3>
-    <p><b>Naposledy spuštěno:</b> {{ routine.last_run or "zatím nikdy" }}</p>
-    <p><b>Plán spouštění:</b>
-        {% if routine.schedule %}
-        {% if routine.schedule is string %}
-        {{ routine.schedule }}
-        {% elif routine.schedule.type == 'daily' %}
-        Denně v {{ routine.schedule.times | join(', ') }}
-        {% elif routine.schedule.type == 'weekly' %}
-        Každý týden ({{ routine.schedule.days | join(', ') }}) v {{ routine.schedule.times | join(', ') }}
-        {% else %}
-        {{ routine.schedule }}
-        {% endif %}
-        {% else %}
-        Pouze ručně
-        {% endif %}
-    </p>
-</div>
-<div class="card">
-    <h3>Plán spouštění (každý den)</h3>
-    <form action="/routines/{{ routine.id }}/update_schedule" method="post">
+    <p><b>Naposledy spuštěno:</b> {{ routine.last_run or "zatím nikdy" }}</p></div>
+
+<form action="/routines/{{ routine.id }}/update" method="post" style="display:grid; gap:1rem; max-width:900px;">
+    <fieldset>
+        <legend>Základ</legend>
+        <label for="routine_name">Název rutiny</label>
+        <input id="routine_name" name="routine_name" type="text"
+               required value="{{ routine.name }}">
+        <label for="routine_description" style="margin-top:.8rem;">Popis rutiny</label>
+        <textarea id="routine_description" name="routine_description" rows="3">{{ routine.description }}</textarea>
+    </fieldset>
+    <fieldset>
+        <legend>Plán spouštění (každý den)</legend>
+
         <label>Časy spuštění:</label>
 
         <div id="time-tags" class="smart-search">
             <input type="text" id="time-input" placeholder="Zadejte čas (např. 08:00) a potvrďte Enter">
             <input type="hidden" id="schedule_times" name="schedule_times"
-                   value="{% if routine.schedule %}
-                 {% if routine.schedule is string %}
-                     {% if '@' in routine.schedule %}
-                         {{ routine.schedule.split('@')[1] }}
-                     {% elif '{' in routine.schedule %}
-                         {{ (routine.schedule | fromjson).times | join(',') }}
-                     {% else %}
-                         {{ routine.schedule }}
-                     {% endif %}
-                 {% else %}
-                     {{ routine.schedule.times | join(',') }}
-                 {% endif %}
-              {% endif %}">
-
+                   value="{% if routine.schedule %}{{ routine.schedule.times | join(',') }}{% endif %}">
         </div>
 
-        <button type="submit" style="margin-top:10px;">Uložit plán</button>
-    </form>
-</div>
+    </fieldset>
 
-<div class="card" style="margin-bottom:1rem;">
-    <h3>E-mailová upozornění</h3>
-    <form action="/routines/{{ routine.id }}/update_emails" method="post">
-        <label>Zasílat e-maily na:</label>
+    <fieldset>
+        <legend>E-mailová upozornění</legend>
         <div id="email-tags" class="smart-search">
             <input type="text" id="email-input" placeholder="Zadejte e-mail a potvrďte Enter">
-            <input type="hidden" id="emails" name="emails" value="{{ routine.emails | join(',') }}">
+            <input type="hidden" id="emails" name="emails"
+                   value="{{ routine.emails | join(',') }}">
         </div>
-        <button type="submit">Uložit e-maily</button>
-    </form>
-</div>
-{% if is_admin %}
-<div class="card">
-    <h3>Uložené filtry</h3>
-    <pre>{{ routine.filters | tojson(indent=2) }}</pre>
-</div>
-{% endif %}
+    </fieldset>
+    <fieldset>
+        <legend>Kategorie</legend>
+        <div style="margin-bottom:1rem;">
+            <label for="category_main_cb">Typ nemovitosti</label>
+            <select id="category_main_cb" name="category_main_cb">
+                <option value="1" {% if routine.filters.category_main_cb== 1 %}selected{% endif %}>Byty</option>
+                <option value="2" {% if routine.filters.category_main_cb== 2 %}selected{% endif %}>Domy</option>
+                <option value="3" {% if routine.filters.category_main_cb== 3 %}selected{% endif %}>Pozemky</option>
+                <option value="4" {% if routine.filters.category_main_cb== 4 %}selected{% endif %}>Komerční</option>
+                <option value="5" {% if routine.filters.category_main_cb== 5 %}selected{% endif %}>Ostatní</option>
+
+            </select>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label>Typ nabídky</label>
+            <div class="checkbox-grid">
+                <label><input type="checkbox" name="category_type_cb" value="1"
+                       {% if (routine.filters.category_type_cb is iterable and 1 in routine.filters.category_type_cb)
+                       or routine.filters.category_type_cb== 1 %}checked{% endif %}> Prodej</label>
+
+                <label><input type="checkbox" name="category_type_cb" value="2"
+                       {% if (routine.filters.category_type_cb is iterable and 2 in routine.filters.category_type_cb)
+                       or routine.filters.category_type_cb== 2 %}checked{% endif %}> Pronájem</label>
+
+                <label><input type="checkbox" name="category_type_cb" value="3"
+                       {% if (routine.filters.category_type_cb is iterable and 3 in routine.filters.category_type_cb)
+                       or routine.filters.category_type_cb== 3 %}checked{% endif %}> Dražby</label>
+
+                <label><input type="checkbox" name="category_type_cb" value="4"
+                       {% if (routine.filters.category_type_cb is iterable and 4 in routine.filters.category_type_cb)
+                       or routine.filters.category_type_cb== 4 %}checked{% endif %}> Podíly</label>
+            </div>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label>Dispozice</label>
+            <div id="dispozice-container" class="checkbox-grid"></div>
+        </div>
+        <div id="rooms-wrapper" class="checkbox-grid" style="margin-bottom:1rem;">
+            <label>Velikost</label>
+            <div class="checkbox-grid">
+                <label><input type="checkbox" name="room_count_cb" value="1"
+                              {% if 1 in routine.filters.room_count_cb %}checked{% endif %}> 1 pokoj</label>
+
+                <label><input type="checkbox" name="room_count_cb" value="2"
+                              {% if 2 in routine.filters.room_count_cb %}checked{% endif %}> 2 pokoje</label>
+
+                <label><input type="checkbox" name="room_count_cb" value="3"
+                              {% if 3 in routine.filters.room_count_cb %}checked{% endif %}> 3 pokoje</label>
+
+                <label><input type="checkbox" name="room_count_cb" value="4"
+                              {% if 4 in routine.filters.room_count_cb %}checked{% endif %}> 4 pokoje</label>
+
+                <label><input type="checkbox" name="room_count_cb" value="5"
+                              {% if 5 in routine.filters.room_count_cb %}checked{% endif %}> 5 a více pokojů</label>
+
+                <label><input type="checkbox" name="room_count_cb" value="6"
+                              {% if 6 in routine.filters.room_count_cb %}checked{% endif %}> Atypický</label>
+
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Lokalita</legend>
+        <div class="row">
+            <div>
+                <label for="locality_country_id">Země</label>
+                <select id="locality_country_id" name="locality_country_id">
+                    <option value="112">Česko</option>
+                </select>
+            </div>
+            <div>
+                <label for="locality_region_id">Kraj</label>
+                <select id="locality_region_id" name="locality_region_id">
+                    <option value="">(neurčeno)</option>
+                    <option value="1" {% if routine.filters.locality_region_id== 1 %}selected{% endif %}>Jihočeský
+                    </option>
+                    <option value="2" {% if routine.filters.locality_region_id== 2 %}selected{% endif %}>Plzeňský
+                    </option>
+                    <option value="3" {% if routine.filters.locality_region_id== 3 %}selected{% endif %}>Karlovarský
+                    </option>
+                    <option value="4" {% if routine.filters.locality_region_id== 4 %}selected{% endif %}>Ústecký
+                    </option>
+                    <option value="5" {% if routine.filters.locality_region_id== 5 %}selected{% endif %}>Liberecký
+                    </option>
+                    <option value="6" {% if routine.filters.locality_region_id== 6 %}selected{% endif %}>
+                        Královéhradecký
+                    </option>
+                    <option value="7" {% if routine.filters.locality_region_id== 7 %}selected{% endif %}>Pardubický
+                    </option>
+                    <option value="8" {% if routine.filters.locality_region_id== 8 %}selected{% endif %}>Olomoucký
+                    </option>
+                    <option value="9" {% if routine.filters.locality_region_id== 9 %}selected{% endif %}>Zlínský
+                    </option>
+                    <option value="10" {% if routine.filters.locality_region_id== 10 %}selected{% endif %}>Praha
+                    </option>
+                    <option value="11" {% if routine.filters.locality_region_id== 11 %}selected{% endif %}>Středočeský
+                    </option>
+                    <option value="12" {% if routine.filters.locality_region_id== 12 %}selected{% endif %}>
+                        Moravskoslezský
+                    </option>
+                    <option value="13" {% if routine.filters.locality_region_id== 13 %}selected{% endif %}>Vysočina
+                    </option>
+                    <option value="14" {% if routine.filters.locality_region_id== 14 %}selected{% endif %}>
+                        Jihomoravský
+                    </option>
+                </select>
+
+            </div>
+        </div>
+        <div class="row-2" style="margin-top:1rem">
+            <div style="position: relative;">
+                <label for="locality_search_name">Adresa</label>
+                <input id="locality_search_name" name="locality_search_name" type="text" placeholder="např. Brno"
+                       autocomplete="off" value="{{ routine.filters.locality_search_name or '' }}">
+
+                <input type="hidden" id="locality_entity_type" name="locality_entity_type"
+                       value="{{ routine.filters.locality_entity_type or '' }}">
+                <input type="hidden" id="locality_entity_id" name="locality_entity_id"
+                       value="{{ routine.filters.locality_entity_id or '' }}">
+
+                <ul id="suggestions" style="
+                    list-style:none;
+                    margin:0;
+                    padding:0;
+                    position:absolute;
+                    width:100%;
+                    background:white;
+                    border:1px solid #ccc;
+                    border-top:none;
+                    z-index:1000;
+                    display:none;
+                    max-height:200px;
+                    overflow-y:auto;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+                "></ul>
+            </div>
+            <div>
+                <label for="locality_radius">Hledat v okolí (km)</label>
+                <input id="locality_radius" name="locality_radius" type="number" step="0.1" min="0"
+                       placeholder="např. 5" value="{{ routine.filters.locality_radius or '' }}">
+            </div>
+        </div>
+    </fieldset>
+    <fieldset id="fieldset-properties">
+        <legend>Vlastnosti nemovitosti</legend>
+        <div id="usable-area-row" class="row" style="display:none;">
+            <div>
+                <label for="usable_area_from">Užitná plocha od (m²)</label>
+                <input id="usable_area_from" name="usable_area_from" type="number" min="0"
+                       value="{{ routine.filters.usable_area_from or '' }}">
+            </div>
+            <div>
+                <label for="usable_area_to">Užitná plocha do (m²)</label>
+                <input id="usable_area_to" name="usable_area_to" type="number" min="0"
+                       value="{{ routine.filters.usable_area_to or '' }}">
+            </div>
+        </div>
+        <div id="estate-area-row" class="row" style="margin-top:1rem; display:none;">
+            <div>
+                <label for="estate_area_from">Plocha pozemku od (m²)</label>
+                <input id="estate_area_from" name="estate_area_from" type="number"
+                       value="{{ routine.filters.estate_area_from or '' }}">
+            </div>
+            <div>
+                <label for="estate_area_to">Plocha pozemku do (m²)</label>
+                <input id="estate_area_to" name="estate_area_to" type="number"
+                       value="{{ routine.filters.estate_area_to or '' }}">
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Cena</legend>
+        <div class="row">
+            <div>
+                <label for="price_from">Cena od (Kč)</label>
+                <input id="price_from" name="price_from" type="number" min="0"
+                       value="{{ routine.filters.price_from or '' }}">
+            </div>
+            <div>
+                <label for="price_to">Cena do (Kč)</label>
+                <input id="price_to" name="price_to" type="number" min="0"
+                       value="{{ routine.filters.price_to or '' }}">
+            </div>
+            <div>
+                <label for="price_mode">Typ ceny</label>
+                <select id="price_mode" name="price_mode">
+                    <option value="total" {% if routine.filters.price_mode=="total" %}selected{% endif %}>
+                        Celková cena
+                    </option>
+                    <option value="per_m2" {% if routine.filters.price_mode=="per_m2" %}selected{% endif %}>
+                        Cena za m²
+                    </option>
+                </select>
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend for="description_search">Chytré vyhledávání</legend>
+        <div>
+            <div id="smart-search" class="smart-search">
+                <input type="text" id="keyword-input" placeholder="Zadejte klíčové slovo a stiskněte Enter">
+                <input type="hidden" name="description_search" id="description_search"
+                       value="{{ routine.filters.description_search or '' }}">
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>Vlastnosti inzerátu</legend>
+        <div>
+            <label for="advert_age_to">Stáří inzerátu do (dní)</label>
+            <input id="advert_age_to" name="advert_age_to" type="number" min="0" placeholder="např. 31"
+                   value="{{ routine.filters.advert_age_to or '' }}">
+        </div>
+    </fieldset>
+    <div style="display:flex; gap:1rem;">
+        <button type="submit">Uložit změny</button>
+    </div>
+</form>
 <script>
-    function toggleScheduleOptions() {
-      const val = document.getElementById('schedule_type').value;
-      document.getElementById('time-container').style.display = val === 'manual' ? 'none' : 'block';
-      document.getElementById('day-container').style.display = val === 'weekly' ? 'block' : 'none';
-    }
-    window.addEventListener('load', toggleScheduleOptions);
+    const routineFilters = JSON.parse({{ routine.filters | tojson | tojson }});
 
-    const modal = document.getElementById("loading-modal");
-    const runForm = document.getElementById("run-form");
-
-    // zobrazit při spuštění rutiny
-    runForm.addEventListener("submit", () => {
-        modal.style.display = "flex";
-    });
-
-    // schovat při běžném načtení stránky
-    window.addEventListener("load", () => {
-        modal.style.display = "none";
-    });
-
-    // schovat i při návratu z BFCache (např. tlačítko Zpět)
-    window.addEventListener("pageshow", (e) => {
-        if (e.persisted) {
-            modal.style.display = "none";
-        }
-    });
-
-    const  emailInput = document.getElementById("email-input");
-    const emailHidden = document.getElementById("emails");
-    const emailContainer = document.getElementById("email-tags");
-
-    let emailList = [];
-
-    // vytvoření tagů
-    function renderEmailTags() {
-        emailContainer.querySelectorAll(".tag").forEach(t => t.remove());
-
-        emailList.forEach(email => {
-            const el = document.createElement("div");
-            el.className = "tag";
-            el.innerHTML = `${email}<span data-email="${email}">&times;</span>`;
-            emailContainer.insertBefore(el, emailInput);
-        });
-
-        emailHidden.value = emailList.join(",");
-    }
-
-    emailInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            const value = emailInput.value.trim();
-            if (!value) return;
-
-            // validace
-            const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-            if (!valid) {
-                emailInput.style.border = "1px solid red";
-                setTimeout(() => emailInput.style.border = "", 800);
-                return;
-            }
-
-            if (!emailList.includes(value)) {
-                emailList.push(value);
-                renderEmailTags();
-            }
-
-            emailInput.value = "";
-        }
-    });
-
-    emailContainer.addEventListener("click", (e) => {
-        if (e.target.tagName === "SPAN") {
-            const val = e.target.getAttribute("data-email");
-            emailList = emailList.filter(v => v !== val);
-            renderEmailTags();
-        }
-    });
-
-    // při načtení stránky — načti existující uložené emaily
-    window.addEventListener("load", () => {
-        const existing = emailHidden.value.split(",").map(x => x.trim()).filter(Boolean);
-        if (existing.length) {
-            emailList = existing;
-            renderEmailTags();
-        }
-    });
-
-    // ===================== ČASY – TAGY =====================
+    /* ===================== ČASY ===================== */
 
 const timeInput = document.getElementById("time-input");
 const timeHidden = document.getElementById("schedule_times");
 const timeContainer = document.getElementById("time-tags");
-
 let timeList = [];
 
-// render tagů
 function renderTimeTags() {
     timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
-
     timeList.forEach(t => {
         const el = document.createElement("div");
         el.className = "tag";
-        el.innerHTML = `${t}<span data-time="${t}">&times;</span>`;
+        el.innerHTML = `${t}<span data-value="${t}">&times;</span>`;
         timeContainer.insertBefore(el, timeInput);
     });
-
     timeHidden.value = timeList.join(",");
 }
 
-// Enter -> přidání času
 timeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
         e.preventDefault();
-        let value = timeInput.value.trim();
-
+        const value = timeInput.value.trim();
         if (!value) return;
 
-        // validace času HH:MM
-        const match = /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
-        if (!match) {
+        if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) {
             timeInput.style.border = "1px solid red";
-            setTimeout(() => timeInput.style.border = "", 800);
+            setTimeout(() => (timeInput.style.border = ""), 800);
             return;
         }
-
         if (!timeList.includes(value)) {
             timeList.push(value);
             renderTimeTags();
         }
-
         timeInput.value = "";
     }
 });
 
-// mazání tagu (klik na ×)
 timeContainer.addEventListener("click", (e) => {
     if (e.target.tagName === "SPAN") {
-        const val = e.target.getAttribute("data-time");
+        const val = e.target.getAttribute("data-value");
         timeList = timeList.filter(t => t !== val);
         renderTimeTags();
     }
 });
 
-// při načtení stránky → nacpat existující uložené časy
+// PŘEDVYPLNĚNÍ
 window.addEventListener("load", () => {
-    let raw = timeHidden.value.trim();
+    const raw = timeHidden.value.trim();
     if (!raw) return;
 
-    // starý formát: "daily@08:00"
-    if (raw.includes("@")) {
-        raw = raw.split("@")[1];
+    raw.split(",").forEach(t => {
+        const v = t.trim();
+        if (v) timeList.push(v);
+    });
+
+    renderTimeTags();
+});
+
+
+    /* ===================== DISPOZICE ===================== */
+
+    const DISPOZICE = [
+        { label: "1+kk", value: 2, visibleFor: [1] },
+        { label: "1+1", value: 3, visibleFor: [1] },
+        { label: "2+kk", value: 4, visibleFor: [1] },
+        { label: "2+1", value: 5, visibleFor: [1] },
+        { label: "3+kk", value: 6, visibleFor: [1] },
+        { label: "3+1", value: 7, visibleFor: [1] },
+        { label: "4+kk", value: 8, visibleFor: [1] },
+        { label: "4+1", value: 9, visibleFor: [1] },
+        { label: "5+kk", value: 10, visibleFor: [1] },
+        { label: "5+1", value: 11, visibleFor: [1] },
+        { label: "6 a více", value: 12, visibleFor: [1] },
+        { label: "Atypický", value: 16, visibleFor: [1] },
+        { label: "Komerční", value: 18, visibleFor: [3] },
+        { label: "Bydlení", value: 19, visibleFor: [3] },
+        { label: "Pole", value: 20, visibleFor: [3] },
+        { label: "Lesy", value: 21, visibleFor: [3] },
+        { label: "Louky", value: 22, visibleFor: [3] },
+        { label: "Zahrady", value: 23, visibleFor: [3] },
+        { label: "Ostatní", value: 24, visibleFor: [3] },
+        { label: "Kanceláře", value: 25, visibleFor: [4] },
+        { label: "Sklady", value: 26, visibleFor: [4] },
+        { label: "Výroba", value: 27, visibleFor: [4] },
+        { label: "Obchodní prostory", value: 28, visibleFor: [4] },
+        { label: "Ubytování", value: 29, visibleFor: [4] },
+        { label: "Restaurace", value: 30, visibleFor: [4] },
+        { label: "Zemědělský", value: 31, visibleFor: [4] },
+        { label: "Ostatní", value: 32, visibleFor: [4] },
+        { label: "Chata", value: 33, visibleFor: [2] },
+        { label: "Garáž", value: 34, visibleFor: [5] },
+        { label: "Památka/jiné", value: 35, visibleFor: [2] },
+        { label: "Ostatní", value: 36, visibleFor: [5] },
+        { label: "Rodinný", value: 37, visibleFor: [2] },
+        { label: "Činžovní dům", value: 38, visibleFor: [4] },
+        { label: "Vila", value: 39, visibleFor: [2] },
+        { label: "Na klíč", value: 40, visibleFor: [2] },
+        { label: "Chalupa", value: 43, visibleFor: [2] },
+        { label: "Zemědělská usedlost", value: 44, visibleFor: [2] },
+        { label: "Rybníky", value: 46, visibleFor: [3] },
+        { label: "Pokoj", value: 47, visibleFor: [1] },
+        { label: "Sady/vinice", value: 48, visibleFor: [3] },
+        { label: "Virtuální kancelář", value: 49, visibleFor: [4] },
+        { label: "Vinný sklep", value: 50, visibleFor: [5] },
+        { label: "Půdní prostor", value: 51, visibleFor: [5] },
+        { label: "Garážové stání", value: 52, visibleFor: [5] },
+        { label: "Mobilheim", value: 53, visibleFor: [5] },
+        { label: "Vícegenerační dům", value: 54, visibleFor: [2] },
+        { label: "Ordinace", value: 56, visibleFor: [4] },
+        { label: "Apartmány", value: 57, visibleFor: [4] }
+    ];
+
+    function renderDispozice() {
+        const existing = routineFilters.category_sub_cb || [];
+        const cont = document.getElementById("dispozice-container");
+        cont.innerHTML = "";
+
+        const type = parseInt(document.getElementById("category_main_cb").value);
+
+        const previouslyChecked = new Set(
+            Array.from(document.querySelectorAll("input[name='category_sub_cb']:checked"))
+                 .map(i => i.value)
+        );
+
+        DISPOZICE
+            .filter(item => item.visibleFor.includes(type))
+            .forEach(item => {
+                const lbl = document.createElement("label");
+                lbl.innerHTML = `
+                    <input type="checkbox" name="category_sub_cb" value="${item.value}" ${existing.includes(item.value) || existing.includes(String(item.value)) ? "checked" : ""}>
+                    ${item.label}
+                `;
+                cont.appendChild(lbl);
+            });
     }
 
-    const existing = raw.split(",").map(x => x.trim()).filter(Boolean);
-    if (existing.length) {
-        timeList = existing;
-        renderTimeTags();
+    document.getElementById("category_main_cb").addEventListener("change", renderDispozice);
+    window.addEventListener("load", renderDispozice);
+
+// PŘEDVYPLNĚNÍ EMAILŮ PO NAČTENÍ
+window.addEventListener("load", () => {
+    const hidden = document.getElementById("emails");
+    const input = document.getElementById("email-input");
+    const c = document.getElementById("email-tags");
+
+    if (hidden.value.trim() !== "") {
+        hidden.value.split(",").map(x => x.trim()).forEach(v => {
+            const tag = document.createElement("div");
+            tag.className = "tag";
+            tag.innerHTML = `${v}<span data-value="${v}">&times;</span>`;
+            c.insertBefore(tag, input);
+        });
     }
 });
 
+// Mazání e-mailových tagů
+document.getElementById("email-tags").addEventListener("click", (e) => {
+    if (e.target.tagName === "SPAN") {
+        const val = e.target.getAttribute("data-value");
+
+        // smažeme tag
+        e.target.parentElement.remove();
+
+        // aktualizujeme hidden input
+        const hidden = document.getElementById("emails");
+        const remaining = Array.from(
+            document.querySelectorAll("#email-tags .tag")
+        ).map(t => t.textContent.replace("×", "").trim());
+
+        hidden.value = remaining.join(",");
+    }
+});
+
+// Přidání e-mailu ENTEREM
+document.getElementById("email-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const value = e.target.value.trim();
+        if (!value) return;
+
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        if (!valid) {
+            e.target.style.border = "1px solid red";
+            setTimeout(() => (e.target.style.border = ""), 800);
+            return;
+        }
+
+        const hidden = document.getElementById("emails");
+
+        const container = document.getElementById("email-tags");
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.innerHTML = `${value}<span data-value="${value}">&times;</span>`;
+        container.insertBefore(tag, e.target);
+
+        const current = hidden.value ? hidden.value.split(",") : [];
+        if (!current.includes(value)) {
+            current.push(value);
+        }
+        hidden.value = current.join(",");
+
+        e.target.value = "";
+    }
+});
+
+
+    /* ===== AUTOCOMPLETE ADRESA ===== */
+    const input = document.getElementById("locality_search_name");
+    const list = document.getElementById("suggestions");
+    const hiddenType = document.getElementById("locality_entity_type");
+    const hiddenId = document.getElementById("locality_entity_id");
+    let timeout = null;
+
+    input.addEventListener("input", () => {
+        const q = input.value.trim();
+        clearTimeout(timeout);
+        hiddenType.value = "";
+        hiddenId.value = "";
+        if (q.length < 2) {
+            list.style.display = "none";
+            return;
+        }
+        timeout = setTimeout(async () => {
+            const res = await fetch(`/autocomplete?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            list.innerHTML = "";
+            data.forEach(item => {
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    <div style="padding:6px 10px;">
+                        <div style="font-weight:600;">${item.name}</div>
+                        ${item.second_row ? `<div style="color:#666; font-size:0.9rem;">${item.second_row}</div>` : ""}
+                    </div>
+                `;
+                li.style.cursor = "pointer";
+                li.addEventListener("click", () => {
+                    input.value = item.name;
+                    hiddenType.value = item.entity_type;
+                    hiddenId.value = item.entity_id;
+                    list.style.display = "none";
+                });
+                list.appendChild(li);
+            });
+            list.style.display = data.length ? "block" : "none";
+        }, 300);
+    });
+
+    /* ===== CHYTRÉ VYHLEDÁVÁNÍ TAGY ===== */
+    const smartInput = document.getElementById("keyword-input");
+    const hiddenInput = document.getElementById("description_search");
+    const container = document.getElementById("smart-search");
+    let keywords = [];
+
+    function renderTags() {
+        container.querySelectorAll(".tag").forEach(t => t.remove());
+        keywords.forEach(word => {
+            const tag = document.createElement("div");
+            tag.className = "tag";
+            tag.innerHTML = `${word}<span data-value="${word}">&times;</span>`;
+            container.insertBefore(tag, smartInput);
+        });
+        hiddenInput.value = keywords.join(",");
+    }
+
+// PŘEDVYPLNĚNÍ SMART SEARCH TAGŮ
+window.addEventListener("load", () => {
+    if (hiddenInput.value.trim() !== "") {
+        keywords = hiddenInput.value.split(",").map(x => x.trim());
+        renderTags();
+    }
+});
+
+    smartInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const value = smartInput.value.trim();
+            if (value && !keywords.includes(value)) {
+                keywords.push(value);
+                renderTags();
+            }
+            smartInput.value = "";
+        }
+    });
+
+    container.addEventListener("click", (e) => {
+        if (e.target.tagName === "SPAN") {
+            const val = e.target.getAttribute("data-value");
+            keywords = keywords.filter(k => k !== val);
+            renderTags();
+        }
+    });
+
+    /* ===== DYNAMICKÉ VLASTNOSTI ===== */
+
+    function updateAreaVisibility() {
+        const val = parseInt(document.getElementById("category_main_cb").value);
+        const usableRow = document.getElementById("usable-area-row");
+        const estateRow = document.getElementById("estate-area-row");
+        const propsFieldset = document.getElementById("fieldset-properties");
+        const roomsWrapper = document.getElementById("rooms-wrapper");
+
+        if (val === 5) propsFieldset.style.display = "none";
+        else propsFieldset.style.display = "block";
+
+        if (val === 1) {
+            usableRow.style.display = "grid";
+            estateRow.style.display = "none";
+        } else if (val === 2) {
+            usableRow.style.display = "grid";
+            estateRow.style.display = "grid";
+        } else if (val === 3) {
+            usableRow.style.display = "none";
+            estateRow.style.display = "grid";
+        } else if (val === 4) {
+            usableRow.style.display = "grid";
+            estateRow.style.display = "none";
+        } else {
+            usableRow.style.display = "none";
+            estateRow.style.display = "none";
+        }
+
+        // Viditelnost “Velikost”
+        roomsWrapper.style.display = val === 2 ? "block" : "none";
+    }
+
+
+    document.getElementById("category_main_cb").addEventListener("change", updateAreaVisibility);
+    window.addEventListener("load", updateAreaVisibility);
+
+    document.getElementById("run-form").addEventListener("submit", function () {
+    const modal = document.getElementById("loading-modal");
+    modal.style.display = "flex";   // zobrazí modal
+
+    // zabrání scrollování stránky, aby to bylo čisté
+    document.body.style.overflow = "hidden";
+});
+
+    input.addEventListener("input", () => {
+    // jakmile začne psát adresu → reset kraje
+    document.getElementById("locality_region_id").value = "";
+    });
+
+    li.addEventListener("click", () => {
+        input.value = item.name;
+        hiddenType.value = item.entity_type;
+        hiddenId.value = item.entity_id;
+
+        // při výběru města/čtvrti/ulice → smaž region
+        document.getElementById("locality_region_id").value = "";
+
+        list.style.display = "none";
+    });
 
 </script>
 </body>

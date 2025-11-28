@@ -458,8 +458,9 @@ def routines_create(
         emails: Optional[str] = Form(None),
 
         category_main_cb: str = Form(...),
-        category_type_cb: Optional[str] = Form(None),
+        category_type_cb: Optional[List[str]] = Form(None),
         category_sub_cb: Optional[List[str]] = Form(None),
+        room_count_cb: Optional[List[str]] = Form(None),
         locality_country_id: Optional[str] = Form(None),
         locality_region_id: Optional[str] = Form(None),
         locality_district_id: Optional[str] = Form(None),
@@ -479,8 +480,9 @@ def routines_create(
 ):
     filters = {
         "category_main_cb": _to_int(category_main_cb),
-        "category_type_cb": _to_int(category_type_cb),
+        "category_type_cb": [int(x) for x in (category_type_cb or [])],
         "category_sub_cb": [_to_int(s) for s in (category_sub_cb or []) if _to_int(s) is not None],
+        "room_count_cb": [_to_int(r) for r in (room_count_cb or []) if _to_int(r) is not None],
         "locality_country_id": _to_int(locality_country_id) or 112,
         "locality_region_id": _to_int(locality_region_id),
         "locality_district_id": _to_int(locality_district_id),
@@ -611,6 +613,99 @@ def routines_update_emails(request: Request, routine_id: str, emails: str = Form
     return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
 
 
+@app.post("/routines/{routine_id}/update")
+def routines_update(
+        request: Request,
+        routine_id: str,
+        routine_name: str = Form(...),
+        routine_description: str = Form(""),
+        schedule_times: str = Form(""),
+        emails: str = Form(""),
+
+        category_main_cb: str = Form(...),
+        category_type_cb: list[str] = Form([]),
+        category_sub_cb: list[str] = Form([]),
+
+        room_count_cb: list[str] = Form([]),
+
+        locality_country_id: str = Form(None),
+        locality_region_id: str = Form(None),
+        locality_district_id: Optional[str] = Form(None),
+        locality_search_name: str = Form(None),
+        locality_entity_type: str = Form(None),
+        locality_entity_id: str = Form(None),
+        locality_radius: str = Form(None),
+        description_search: Optional[str] = Form(None),
+
+        usable_area_from: str = Form(None),
+        usable_area_to: str = Form(None),
+        estate_area_from: str = Form(None),
+        estate_area_to: str = Form(None),
+
+        price_from: str = Form(None),
+        price_to: str = Form(None),
+        price_mode: str = Form("total"),
+        advert_age_to: str = Form(None),
+):
+    from src.routines_storage import _load_index, _save_index
+
+    doc = _load_index()
+    routine = next((r for r in doc["routines"] if r["id"] == routine_id), None)
+    if not routine:
+        return RedirectResponse("/routines", status_code=302)
+
+    # ULOŽENÍ ZÁKLADU
+    routine["name"] = routine_name
+    routine["description"] = routine_description
+
+    # PLÁN
+    times = [t.strip() for t in schedule_times.split(",") if t.strip()]
+    routine["schedule"] = {"type": "daily", "times": times} if times else None
+
+    # EMAILY
+    routine["emails"] = [e.strip() for e in emails.split(",") if e.strip()]
+
+    # Lokalita – pouze jeden typ může být aktivní
+    entity_id = int(locality_entity_id) if locality_entity_id else None
+    entity_type = locality_entity_type.strip() if locality_entity_type else None
+
+    region_id = int(locality_region_id) if locality_region_id else None
+
+    if entity_id:
+        # pokud se vybere město/čtvrť/ulice → smažeme kraj
+        region_id = None
+
+    routine["filters"] = {
+        "category_main_cb": int(category_main_cb),
+        "category_type_cb": [int(x) for x in category_type_cb],
+        "category_sub_cb": [int(x) for x in category_sub_cb],
+        "room_count_cb": [int(x) for x in room_count_cb],
+
+        "locality_country_id": int(locality_country_id) if locality_country_id else None,
+        "locality_region_id": region_id,
+        "locality_district_id": int(locality_district_id) if locality_district_id else None,
+        "locality_search_name": locality_search_name,
+        "locality_entity_type": entity_type,
+        "locality_entity_id": entity_id,
+        "locality_radius": float(locality_radius) if locality_radius else None,
+        "description_search": _clean_str(description_search),
+
+        "usable_area_from": int(usable_area_from) if usable_area_from else None,
+        "usable_area_to": int(usable_area_to) if usable_area_to else None,
+        "estate_area_from": int(estate_area_from) if estate_area_from else None,
+        "estate_area_to": int(estate_area_to) if estate_area_to else None,
+
+        "price_mode": price_mode,
+        "price_from": int(price_from) if price_from else None,
+        "price_to": int(price_to) if price_to else None,
+        "advert_age_to": int(advert_age_to) if advert_age_to else None,
+    }
+
+    _save_index(doc)
+
+    return RedirectResponse(f"/routines/{routine_id}", status_code=303)
+
+
 @app.post("/routines/{routine_id}/delete")
 def routines_delete(request: Request, routine_id: str):
     uid = get_current_user_id(request)
@@ -706,7 +801,25 @@ def routines_run(
 
     cards = [to_card(r) for r in displayed_items]
 
-    return RedirectResponse(f"/routines/{routine_id}/results", status_code=303)
+    return render(
+        request,
+        "results.html",
+        {
+            "items": displayed_items,
+            "cards": cards,
+            "pagination": {
+                "total": len(displayed_items),
+                "limit": 0,
+                "offset": 0,
+                "has_prev": False,
+                "has_next": False,
+            },
+            "filters": {
+                "routine_id": routine_id,
+                "only_new": show_only_new
+            }
+        },
+    )
 
 
 @app.get("/routines/{routine_id}/ad/{hash_id}", response_class=HTMLResponse)
