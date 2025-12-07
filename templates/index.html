@@ -14,6 +14,9 @@
         <a href="/admin">🏠 Admin panel</a>
         {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
+        {% if request.session.team_id %}
+        <a href="/team">👥 Tým</a>
+        {% endif %}
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
@@ -119,7 +122,7 @@
             </div>
             <div>
                 <label for="locality_radius">Hledat v okolí (km)</label>
-                <input id="locality_radius" name="locality_radius" type="number" min="0" step="1" placeholder="např. 5">
+                <input id="locality_radius" name="locality_radius" type="number" min="0" step="0.1" placeholder="např. 5">
             </div>
         </div>
     </fieldset>

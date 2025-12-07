@@ -108,6 +108,9 @@
         <a href="/admin">🏠 Admin panel</a>
         {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
+        {% if request.session.team_id %}
+        <a href="/team">👥 Tým</a>
+        {% endif %}
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
@@ -201,20 +204,24 @@
             <label>Typ nabídky</label>
             <div class="checkbox-grid">
                 <label><input type="checkbox" name="category_type_cb" value="1"
-                       {% if (routine.filters.category_type_cb is iterable and 1 in routine.filters.category_type_cb)
-                       or routine.filters.category_type_cb== 1 %}checked{% endif %}> Prodej</label>
+                              {% if (routine.filters.category_type_cb is iterable and 1 in
+                              routine.filters.category_type_cb)
+                              or routine.filters.category_type_cb== 1 %}checked{% endif %}> Prodej</label>
 
                 <label><input type="checkbox" name="category_type_cb" value="2"
-                       {% if (routine.filters.category_type_cb is iterable and 2 in routine.filters.category_type_cb)
-                       or routine.filters.category_type_cb== 2 %}checked{% endif %}> Pronájem</label>
+                              {% if (routine.filters.category_type_cb is iterable and 2 in
+                              routine.filters.category_type_cb)
+                              or routine.filters.category_type_cb== 2 %}checked{% endif %}> Pronájem</label>
 
                 <label><input type="checkbox" name="category_type_cb" value="3"
-                       {% if (routine.filters.category_type_cb is iterable and 3 in routine.filters.category_type_cb)
-                       or routine.filters.category_type_cb== 3 %}checked{% endif %}> Dražby</label>
+                              {% if (routine.filters.category_type_cb is iterable and 3 in
+                              routine.filters.category_type_cb)
+                              or routine.filters.category_type_cb== 3 %}checked{% endif %}> Dražby</label>
 
                 <label><input type="checkbox" name="category_type_cb" value="4"
-                       {% if (routine.filters.category_type_cb is iterable and 4 in routine.filters.category_type_cb)
-                       or routine.filters.category_type_cb== 4 %}checked{% endif %}> Podíly</label>
+                              {% if (routine.filters.category_type_cb is iterable and 4 in
+                              routine.filters.category_type_cb)
+                              or routine.filters.category_type_cb== 4 %}checked{% endif %}> Podíly</label>
             </div>
         </div>
         <div style="margin-bottom:1rem;">

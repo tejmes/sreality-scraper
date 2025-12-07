@@ -14,6 +14,9 @@
         <a href="/admin">🏠 Admin panel</a>
         {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
+        {% if request.session.team_id %}
+        <a href="/team">👥 Tým</a>
+        {% endif %}
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>
@@ -29,6 +32,10 @@
 <div class="card" style="max-width:800px;">
     <h2>Správa uživatelů</h2>
     <a href="/admin/users" class="btn-main">Otevřít správu uživatelů</a>
+</div>
+<div class="card" style="max-width:800px;margin-top:1rem;">
+    <h2>Správa týmů</h2>
+    <a href="/admin/teams" class="btn-main">Otevřít správu týmů</a>
 </div>
 </body>
 </html>

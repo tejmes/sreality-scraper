@@ -56,6 +56,9 @@
         <a href="/admin">🏠 Admin panel</a>
         {% endif %}
         <a href="/search">🔍 Vyhledávání</a>
+        {% if request.session.team_id %}
+        <a href="/team">👥 Tým</a>
+        {% endif %}
         <a href="/routines">📋 Rutiny</a>
         <a href="/routine">＋ Nová rutina</a>
     </div>

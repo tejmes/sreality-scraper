@@ -2,12 +2,12 @@
 <html lang="cs">
 <head>
     <meta charset="utf-8">
-    <title>Rutiny – seznam</title>
+    <title>Můj tým</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        table {
+         table {
             margin-top: 1rem;
             width: 100%;
             border-collapse: collapse;
@@ -44,7 +44,9 @@
         <a href="/routine">＋ Nová rutina</a>
     </div>
     <div class="nav-right">
-        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
+        <span class="user-label">
+            Přihlášen jako: <b>{{ request.session.username }}</b>
+        </span>
         <div class="user-actions">
             <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
             <a href="/logout" class="btn-logout">Odhlásit se</a>
@@ -54,28 +56,36 @@
 <table>
     <thead>
     <tr>
-        <th>Název</th>
-        {% if is_admin %}
-        <th>Autor</th>
-        {% endif %}
-        <th>Vytvořeno</th>
-        <th>Akce</th>
+        {% for m in members %}
+        <th>{{ m.username }}</th>
+        {% endfor %}
     </tr>
     </thead>
-    <tbody>
-    {% for r in routines %}
-    <tr>
-        <td><a class="btn" href="/routines/{{ r.id }}">{{ r.name }}</a></td>
-        {% if is_admin %}
-        <td class="muted">{{ r.author_name or "?" }}</td>
+<tbody>
+    {% set ns = namespace(max_routines=0) %}
+    {# zjistit max počet rutin #}
+    {% for m in members %}
+        {% set rs = routines_by_user.get(m.id, []) %}
+        {% if rs|length > ns.max_routines %}
+            {% set ns.max_routines = rs|length %}
         {% endif %}
-        <td class="muted">{{ r.created_at }}</td>
-        <td>
-            <a class="btn" href="/routines/{{ r.id }}">Detail</a>
-        </td>
+    {% endfor %}
+    {# vygenerovat řádky #}
+    {% for i in range(ns.max_routines) %}
+    <tr>
+        {% for m in members %}
+            {% set rs = routines_by_user.get(m.id, []) %}
+            <td>
+                {% if rs|length > i %}
+                    <a class="btn" href="/routines/{{ rs[i].id }}">{{ rs[i].name }}</a>
+                {% else %}
+                    <span class="muted"></span>
+                {% endif %}
+            </td>
+        {% endfor %}
     </tr>
     {% endfor %}
-    </tbody>
+</tbody>
 </table>
 </body>
 </html>

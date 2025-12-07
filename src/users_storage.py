@@ -34,6 +34,15 @@ def init_users_db(db_path: Path = USERS_DB) -> None:
         """
     )
     con.commit()
+
+    # Přidání sloupce team_id (pokud ještě neexistuje)
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN team_id INTEGER")
+        con.commit()
+    except sqlite3.OperationalError:
+        # sloupec už existuje → ignoruj
+        pass
+
     con.close()
 
 
@@ -111,7 +120,7 @@ def list_users():
     con = sqlite3.connect(USERS_DB)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    cur.execute("SELECT id, username, is_admin, created_at FROM users ORDER BY id ASC")
+    cur.execute("SELECT id, username, is_admin, created_at, team_id FROM users ORDER BY id ASC")
     users = [dict(row) for row in cur.fetchall()]
     con.close()
     return users
@@ -132,3 +141,34 @@ def reset_password(user_id: int, new_password: str):
     cur.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hashed, user_id))
     con.commit()
     con.close()
+
+
+def set_team(user_id: int, team_id: int | None):
+    """Nastaví uživateli team_id (nebo None pro odebrání z týmu)."""
+    con = _connect()
+    cur = con.cursor()
+    cur.execute("UPDATE users SET team_id = ? WHERE id = ?", (team_id, user_id))
+    con.commit()
+    con.close()
+
+
+def list_team_members(team_id: int):
+    """Vrátí seznam uživatelů v daném týmu."""
+    con = _connect()
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("SELECT * FROM users WHERE team_id = ?", (team_id,))
+    rows = cur.fetchall()
+    con.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    """Najde uživatele podle ID."""
+    con = _connect()
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cur.fetchone()
+    con.close()
+    return dict(row) if row else None

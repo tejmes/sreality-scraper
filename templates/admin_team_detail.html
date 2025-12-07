@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <title>Tým – detail</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .card {
+            max-width: 900px;
+            margin-bottom: 1rem;
+        }
+        .card table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        th, td {
+            padding: .6rem .5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<nav class="top-nav">
+    <div class="nav-left">
+        {% if is_admin %}
+        <a href="/admin">🏠 Admin panel</a>
+        {% endif %}
+        <a href="/search">🔍 Vyhledávání</a>
+        {% if request.session.team_id %}
+        <a href="/team">👥 Tým</a>
+        {% endif %}
+        <a href="/routines">📋 Rutiny</a>
+        <a href="/routine">＋ Nová rutina</a>
+    </div>
+    <div class="nav-right">
+        <span class="user-label">Přihlášen jako: <b>{{ request.session.username }}</b></span>
+        <div class="user-actions">
+            <a href="/user/reset_password" class="btn-secondary">Změnit heslo</a>
+            <a href="/logout" class="btn-logout">Odhlásit se</a>
+        </div>
+    </div>
+</nav>
+<h1>{{ team.name }}</h1>
+<div class="card">
+    <h2>Členové týmu</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Jméno</th>
+            <th>Admin</th>
+            <th>V týmu od</th>
+            <th>Akce</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for u in members %}
+        <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ "Ano" if u.is_admin else "Ne" }}</td>
+            <td>{{ u.created_at }}</td>
+            <td>
+                <form action="/admin/teams/{{ team.id }}/remove_user" method="post" style="display:inline;"
+                      onsubmit="return confirm('Odebrat uživatele z týmu?');">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    <button type="submit" class="danger">Odebrat z týmu</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="card">
+    <h2>Přidat člena</h2>
+    <form action="/admin/teams/{{ team.id }}/add_user" method="post">
+        <div>
+            <label>Uživatel:</label>
+            <select name="user_id" required>
+                <option value="">-- vyberte --</option>
+                {% for u in available_users %}
+                <option value="{{ u.id }}">{{ u.username }}{% if u.team_id %} (v týmu {{ u.team_id }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <button type="submit">Přidat</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

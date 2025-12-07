@@ -53,7 +53,17 @@ from src.users_storage import (
     create_user,
     list_users,
     delete_user,
-    reset_password
+    reset_password,
+    set_team,
+    list_team_members,
+    get_user_by_id,
+)
+
+from src.teams_storage import (
+    list_teams,
+    get_team,
+    create_team,
+    delete_team,
 )
 
 from src.email_utils import send_email
@@ -123,17 +133,33 @@ def is_admin(request: Request) -> bool:
 
 
 def _ensure_can_access_routine(request: Request, routine: dict):
-    """
-    Admin může vše, běžný uživatel jen své rutiny.
-    Vrací RedirectResponse nebo HTMLResponse, pokud nemá přístup.
-    """
     if not routine:
         return HTMLResponse("Rutina nenalezena.", status_code=404)
-    if is_admin(request):
+
+    uid = request.session.get("user_id")
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    is_admin = request.session.get("is_admin", False)
+    my_team = request.session.get("team_id")
+
+    owner_id = routine.get("user_id")
+    owner = get_user_by_id(owner_id)
+
+    # 1) Admin má vždy přístup
+    if is_admin:
         return None
-    if routine.get("user_id") != get_current_user_id(request):
-        return HTMLResponse("Přístup odepřen.", status_code=403)
-    return None
+
+    # 2) Autor rutiny má přístup
+    if owner_id == uid:
+        return None
+
+    # 3) Oba mají tým a jsou ve stejném týmu
+    if my_team and owner and owner.get("team_id") == my_team:
+        return None
+
+    # Jinak zákaz
+    return HTMLResponse("Přístup odepřen.", status_code=403)
 
 
 def get_current_user(request: Request) -> Optional[str]:
@@ -1029,6 +1055,7 @@ def login_submit(request: Request, username: str = Form(...), password: str = Fo
     request.session["user_id"] = user["id"]
     request.session["username"] = user["username"]
     request.session["is_admin"] = bool(user["is_admin"])
+    request.session["team_id"] = user.get("team_id")
 
     # redirect podle role
     if user["is_admin"]:
@@ -1139,6 +1166,125 @@ def admin_reset_password(request: Request, user_id: int):
         return RedirectResponse("/login", status_code=303)
     reset_password(user_id, "1234")
     return RedirectResponse("/admin/users", status_code=303)
+
+
+# =========================================
+#           ADMIN – TÝMY
+# =========================================
+
+@app.get("/admin/teams", response_class=HTMLResponse)
+def admin_teams(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    teams = list_teams()
+    return render(request, "admin_teams.html", {
+        "teams": teams,
+        "username": get_current_user(request),
+    })
+
+
+@app.post("/admin/teams/create")
+def admin_teams_create(request: Request, name: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    create_team(name)
+    return RedirectResponse("/admin/teams", status_code=303)
+
+
+@app.get("/admin/teams/{team_id}", response_class=HTMLResponse)
+def admin_team_detail(request: Request, team_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    team = get_team(team_id)
+    if not team:
+        return HTMLResponse("Tým nenalezen.", status_code=404)
+
+    users = list_users()
+    members = [u for u in users if u.get("team_id") == team_id]
+    available = [u for u in users if u.get("team_id") != team_id]
+
+    return render(request, "admin_team_detail.html", {
+        "team": team,
+        "members": members,
+        "available_users": available,
+        "username": get_current_user(request),
+    })
+
+
+@app.post("/admin/teams/{team_id}/add_user")
+def admin_team_add_user(request: Request, team_id: int, user_id: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    team = get_team(team_id)
+    if not team:
+        return HTMLResponse("Tým nenalezen.", status_code=404)
+
+    set_team(user_id, team_id)
+    return RedirectResponse(f"/admin/teams/{team_id}", status_code=303)
+
+
+@app.post("/admin/teams/{team_id}/remove_user")
+def admin_team_remove_user(request: Request, team_id: int, user_id: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    team = get_team(team_id)
+    if not team:
+        return HTMLResponse("Tým nenalezen.", status_code=404)
+
+    set_team(user_id, None)
+    return RedirectResponse(f"/admin/teams/{team_id}", status_code=303)
+
+
+@app.post("/admin/teams/{team_id}/delete")
+def admin_team_delete(request: Request, team_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/login", status_code=303)
+
+    delete_team(team_id)
+    # POZOR: uživatelům necháme team_id, nebo je můžeš ručně odpojit – jednoduchá verze to zatím neřeší
+    return RedirectResponse("/admin/teams", status_code=303)
+
+
+@app.get("/team", response_class=HTMLResponse)
+def team_page(request: Request):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse("/login", status_code=303)
+
+    user = get_user_by_id(uid)
+    if not user or user.get("team_id") is None:
+        return HTMLResponse("Nejste členem žádného týmu.", status_code=403)
+
+    team_id = user["team_id"]
+    team = get_team(team_id)
+    if not team:
+        return HTMLResponse("Tým nenalezen.", status_code=404)
+
+    members = list_team_members(team_id)
+    member_ids = {m["id"] for m in members}
+
+    # rutiny všech členů týmu
+    all_routines = list_routines()
+    team_routines = [r for r in all_routines if r.get("user_id") in member_ids]
+
+    # pro pohodlné zobrazení – slovník user_id -> uživatel
+    users_by_id = {m["id"]: m for m in members}
+
+    # slovník user_id -> seznam rutin
+    routines_by_user = {}
+    for r in team_routines:
+        uid = r.get("user_id")
+        routines_by_user.setdefault(uid, []).append(r)
+
+    return render(request, "team.html", {
+        "team": team,
+        "members": members,
+        "routines_by_user": routines_by_user,
+        "users_by_id": users_by_id,
+    })
 
 
 @app.post("/routines/{routine_id}/update_schedule")

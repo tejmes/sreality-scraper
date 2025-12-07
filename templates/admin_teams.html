@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
     <meta charset="utf-8">
-    <title>Správa uživatelů</title>
+    <title>Správa týmů</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
@@ -19,6 +19,9 @@
         th, td {
             padding: .6rem .5rem;
             border-bottom: 1px solid #e5e7eb;
+        }
+        a {
+            text-decoration: none;
         }
     </style>
 </head>
@@ -43,70 +46,47 @@
         </div>
     </div>
 </nav>
-<h1>Správa uživatelů</h1>
+<h1>Správa týmů</h1>
 <div class="card">
-    <h2>Nový uživatel</h2>
-    <form action="/admin/users/create" method="post">
+    <h2>Nový tým</h2>
+    <form action="/admin/teams/create" method="post">
         <div>
-            <label>Uživatelské jméno:</label>
-            <input type="text" name="username" required>
+            <label>Název týmu:</label>
+            <input type="text" name="name" required>
         </div>
         <div>
-            <label>Heslo:</label>
-            <input type="password" name="password" required>
-        </div>
-        <div>
-            <label style="display: inline-flex; align-items: center;white-space:nowrap;">
-                <input type="checkbox" name="is_admin" value="1">Admin účet</label>
-        </div>
-        <div>
-            <button type="submit">Vytvořit</button>
+            <button type="submit">Vytvořit tým</button>
         </div>
     </form>
 </div>
 <div class="card">
-    <h2>Existující uživatelé</h2>
+    <h2>Existující týmy</h2>
     <table>
         <thead>
         <tr>
             <th>ID</th>
-            <th>Jméno</th>
-            <th>Admin</th>
+            <th>Název</th>
             <th>Vytvořen</th>
             <th>Akce</th>
         </tr>
         </thead>
         <tbody>
-        {% for user in users %}
+        {% for t in teams %}
         <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.username }}</td>
-            <td>{{ "Ano" if user.is_admin else "Ne" }}</td>
-            <td>{{ user.created_at }}</td>
+            <td>{{ t.id }}</td>
+            <td>{{ t.name }}</td>
+            <td>{{ t.created_at }}</td>
             <td>
-                <form action="/admin/users/{{ user.id }}/delete" method="post"
-                      onsubmit="return confirm('Opravdu chcete smazat tohoto uživatele?')" style="display:inline;">
+                <form action="/admin/teams/{{ t.id }}/delete" method="post" style="display:inline;"
+                      onsubmit="return confirm('Opravdu smazat tento tým?');">
                     <button type="submit" class="danger">Smazat</button>
                 </form>
-                <form id="reset-form-{{ user.id }}" method="post" action="/admin/users/{{ user.id }}/reset-password"
-                      style="display:inline;">
-                    <input type="hidden" name="new_password" value="">
-                    <button type="button" onclick="resetPassword({{ user.id }})">Reset hesla</button>
-                </form>
+                <a class="btn" href="/admin/teams/{{ t.id }}">Detail</a>
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
-<script>
-    function resetPassword(userId) {
-        const pwd = prompt("Zadejte nové heslo pro tohoto uživatele:");
-        if (!pwd) return;
-        const form = document.getElementById("reset-form-" + userId);
-        form.querySelector("input[name='new_password']").value = pwd;
-        form.submit();
-    }
-</script>
 </body>
 </html>
