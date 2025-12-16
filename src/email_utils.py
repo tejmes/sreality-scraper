@@ -1,11 +1,11 @@
+import os
 import smtplib
 from email.mime.text import MIMEText
-import os
 
 
 def send_email(to: list[str], subject: str, text: str):
     """
-    Odesílá čistě textový e-mail přes Seznam SMTP (SSL).
+    Odesílá čistě textový e-mail přes Seznam SMTP.
     """
     msg = MIMEText(text, "plain", "utf-8")
     msg["Subject"] = subject

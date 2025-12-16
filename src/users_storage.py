@@ -3,9 +3,10 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
 from passlib.hash import bcrypt
 import traceback
+
+from src.routines_storage import list_routines, delete_routine
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,18 +41,13 @@ def init_users_db(db_path: Path = USERS_DB) -> None:
         cur.execute("ALTER TABLE users ADD COLUMN team_id INTEGER")
         con.commit()
     except sqlite3.OperationalError:
-        # sloupec už existuje → ignoruj
+        # sloupec už existuje
         pass
 
     con.close()
 
 
-def create_user(
-        username: str,
-        password: str,
-        is_admin: bool = False,
-        db_path: Path = USERS_DB,
-) -> Dict[str, Any]:
+def create_user(username: str, password: str, is_admin: bool = False, db_path: Path = USERS_DB) -> Dict[str, Any]:
     """
     Vytvoří uživatele s bcrypt hashem.
     Vyhazuje sqlite3.IntegrityError při duplicitním username.
@@ -83,6 +79,15 @@ def create_user(
         raise
 
 
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    con = _connect()
+    cur = con.cursor()
+    cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cur.fetchone()
+    con.close()
+    return dict(row) if row else None
+
+
 def get_user_by_username(username: str, db_path: Path = USERS_DB) -> Optional[Dict[str, Any]]:
     con = _connect(db_path)
     cur = con.cursor()
@@ -94,7 +99,7 @@ def get_user_by_username(username: str, db_path: Path = USERS_DB) -> Optional[Di
 
 def verify_user_password(username: str, password: str, db_path: Path = USERS_DB) -> Optional[Dict[str, Any]]:
     """
-    Vrací dict uživatele, pokud heslo sedí; jinak None.
+    Vrací dict uživatele, pokud heslo sedí jinak None.
     """
     user = get_user_by_username(username, db_path)
     if not user:
@@ -117,8 +122,7 @@ def ensure_admin(username: str = "admin", password: str = "admin", db_path: Path
 
 
 def list_users():
-    con = sqlite3.connect(USERS_DB)
-    con.row_factory = sqlite3.Row
+    con = _connect()
     cur = con.cursor()
     cur.execute("SELECT id, username, is_admin, created_at, team_id FROM users ORDER BY id ASC")
     users = [dict(row) for row in cur.fetchall()]
@@ -127,7 +131,11 @@ def list_users():
 
 
 def delete_user(user_id: int):
-    con = sqlite3.connect(USERS_DB)
+    user_routines = list_routines(user_id=user_id)
+    for r in user_routines:
+        delete_routine(r["id"])
+
+    con = _connect()
     cur = con.cursor()
     cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
     con.commit()
@@ -135,7 +143,7 @@ def delete_user(user_id: int):
 
 
 def reset_password(user_id: int, new_password: str):
-    con = sqlite3.connect(USERS_DB)
+    con = _connect()
     cur = con.cursor()
     hashed = bcrypt.hash(new_password)
     cur.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hashed, user_id))
@@ -155,20 +163,8 @@ def set_team(user_id: int, team_id: int | None):
 def list_team_members(team_id: int):
     """Vrátí seznam uživatelů v daném týmu."""
     con = _connect()
-    con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute("SELECT * FROM users WHERE team_id = ?", (team_id,))
     rows = cur.fetchall()
     con.close()
     return [dict(r) for r in rows]
-
-
-def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
-    """Najde uživatele podle ID."""
-    con = _connect()
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    row = cur.fetchone()
-    con.close()
-    return dict(row) if row else None

@@ -52,7 +52,7 @@ def build_query(
 ) -> str:
     params: Dict[str, Any] = {}
     _add(params, "category_main_cb", category_main_cb)
-    _add(params, "category_type_cb", category_type_cb)
+    _add(params, "category_type_cb", list(category_type_cb) if category_type_cb else None)
     _add(params, "category_sub_cb", list(category_sub_cb) if category_sub_cb else None)
     # Odfiltruj prázdné hodnoty – Sreality to jinak znefunkční
     if room_count_cb:
@@ -90,6 +90,19 @@ def fetch_page(url: str) -> Dict[str, Any]:
         resp = client.get(url)
         resp.raise_for_status()
         return resp.json()
+
+
+def extract_pagination(data: Dict[str, Any]) -> Dict[str, Any]:
+    return data.get("pagination", {}) if isinstance(data, dict) else {}
+
+
+def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    results = data.get("results", [])
+    if not results and "_embedded" in data:
+        results = data["_embedded"].get("estates", [])
+    return results
 
 
 def fetch_all_pages(base_url: str, max_pages: int = 10000) -> list[dict]:
@@ -130,24 +143,10 @@ def fetch_all_pages(base_url: str, max_pages: int = 10000) -> list[dict]:
     return all_items
 
 
-def extract_pagination(data: Dict[str, Any]) -> Dict[str, Any]:
-    return data.get("pagination", {}) if isinstance(data, dict) else {}
-
-
-def extract_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    if not isinstance(data, dict):
-        return []
-    results = data.get("results", [])
-    if not results and "_embedded" in data:
-        results = data["_embedded"].get("estates", [])
-    return results
-
-
 def to_card(item: dict[str, Any]) -> dict[str, Any]:
     """
     Převádí JSON položku z API na interní 'card' objekt.
     """
-    # --- Lokalita pro zobrazení ---
     loc = item.get("locality") or {}
     if isinstance(loc, dict):
         city = loc.get("city") or ""
@@ -167,8 +166,8 @@ def to_card(item: dict[str, Any]) -> dict[str, Any]:
     else:
         price = price_raw
 
-    type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
     main_map = {1: "byt", 2: "dum", 3: "pozemek", 4: "komercni", 5: "ostatni"}
+    type_map = {1: "prodej", 2: "pronajem", 3: "drazby", 4: "podily"}
     sub_map = {
         2: "1+kk",
         3: "1+1",
@@ -244,12 +243,12 @@ def to_card(item: dict[str, Any]) -> dict[str, Any]:
         return s.strip("-")
 
     # --- Kategorie ---
-    ct = type_map.get(_val(item.get("category_type_cb")), "detail")
     cm = main_map.get(_val(item.get("category_main_cb")), "nemovitost")
+    ct = type_map.get(_val(item.get("category_type_cb")), "detail")
     sub_val = _val(item.get("category_sub_cb"))
     cs = sub_map.get(sub_val, "")
 
-    # --- Oprava množných tvarů podkategorií (Sreality používá singulár) ---
+    # --- Oprava množných tvarů podkategorií ---
     singular_fixes = {
         "louky": "louka",
         "lesy": "les",

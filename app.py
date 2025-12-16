@@ -627,15 +627,15 @@ def routines_update_description(routine_id: str, new_description: str = Form(...
 
 @app.post("/routines/{routine_id}/update_emails")
 def routines_update_emails(request: Request, routine_id: str, emails: str = Form("")):
-    from src.routines_storage import _load_index, _save_index
+    from src.routines_storage import load_index, save_index
 
-    doc = _load_index()
+    doc = load_index()
     for r in doc["routines"]:
         if r["id"] == routine_id:
             r["emails"] = [e.strip() for e in emails.split(",") if e.strip()]
             break
 
-    _save_index(doc)
+    save_index(doc)
     return RedirectResponse(url=f"/routines/{routine_id}", status_code=303)
 
 
@@ -673,9 +673,9 @@ def routines_update(
         price_mode: str = Form("total"),
         advert_age_to: str = Form(None),
 ):
-    from src.routines_storage import _load_index, _save_index
+    from src.routines_storage import load_index, save_index
 
-    doc = _load_index()
+    doc = load_index()
     routine = next((r for r in doc["routines"] if r["id"] == routine_id), None)
     if not routine:
         return RedirectResponse("/routines", status_code=302)
@@ -727,7 +727,7 @@ def routines_update(
         "advert_age_to": int(advert_age_to) if advert_age_to else None,
     }
 
-    _save_index(doc)
+    save_index(doc)
 
     return RedirectResponse(f"/routines/{routine_id}", status_code=303)
 
@@ -1292,8 +1292,8 @@ def routines_update_schedule(
         routine_id: str,
         schedule_times: Optional[str] = Form(None),
 ):
-    from src.routines_storage import _load_index, _save_index, get_routine
-    doc = _load_index()
+    from src.routines_storage import load_index, save_index, get_routine
+    doc = load_index()
     routine = None
     for r in doc["routines"]:
         if r["id"] == routine_id:
@@ -1305,7 +1305,7 @@ def routines_update_schedule(
             else:
                 r["schedule"] = None
             break
-    _save_index(doc)
+    save_index(doc)
 
     # === aktualizace APScheduleru ===
     if routine:

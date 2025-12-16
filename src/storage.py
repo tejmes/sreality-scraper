@@ -5,17 +5,51 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import re
 
-ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DB_PATH = ROOT / "data" / "estates.sqlite3"
-DEFAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
 
 def _now_iso() -> str:
     now = datetime.now(ZoneInfo("Europe/Prague"))
     return now.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def create_db_if_needed(db_path: Path | str = DEFAULT_DB_PATH) -> None:
+def _pick(d: Dict[str, Any], *keys: str, default=None):
+    for k in keys:
+        v = d.get(k)
+        if v is not None:
+            return v
+    return default
+
+
+def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
+    advert_name = item.get("advert_name")
+
+    loc = item.get("locality")
+
+    clean_name = advert_name.replace("\xa0", " ").replace("\u202f", " ")
+    match = re.search(r"(\d+)", clean_name)
+    area = int(match.group(1)) if match else None
+
+    price_raw = _pick(item, "price_summary_czk", "price_czk", "price", default=None)
+    price_czk = price_raw.get("value") if isinstance(price_raw, dict) else price_raw
+
+    return {
+        "hash_id": item.get("hash_id"),
+        "advert_name": advert_name,
+        "category_main": (item.get("category_main_cb") or {}).get("value"),
+        "category_sub": (item.get("category_sub_cb") or {}).get("value"),
+        "category_type": (item.get("category_type_cb") or {}).get("value"),
+        "city": loc.get("city"),
+        "district": loc.get("district"),
+        "region_id": loc.get("region_id"),
+        "region_name": loc.get("region"),
+        "gps_lat": loc.get("gps_lat"),
+        "gps_lon": loc.get("gps_lon"),
+        "area_m2": area,
+        "price_czk": price_czk,
+        "price_czk_m2": item.get("price_czk_m2"),
+    }
+
+
+def create_db_if_needed(db_path: Path) -> None:
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(db_path)
@@ -36,7 +70,6 @@ def create_db_if_needed(db_path: Path | str = DEFAULT_DB_PATH) -> None:
         area_m2            REAL,
         price_czk          REAL,
         price_czk_m2       REAL,
-        price_unit_value   INTEGER,
         first_seen         TEXT,
         last_seen          TEXT
     );
@@ -55,46 +88,7 @@ def create_db_if_needed(db_path: Path | str = DEFAULT_DB_PATH) -> None:
     con.close()
 
 
-def _pick(d: Dict[str, Any], *keys: str, default=None):
-    for k in keys:
-        v = d.get(k)
-        if v is not None:
-            return v
-    return default
-
-
-def _extract_flat_fields(item: Dict[str, Any]) -> Dict[str, Any]:
-    loc = item.get("locality") or {}
-
-    price_raw = _pick(item, "price_summary_czk", "price_czk", "price", default=None)
-    price_czk = price_raw.get("value") if isinstance(price_raw, dict) else price_raw
-
-    advert_name = item.get("advert_name") or ""
-
-    clean_name = advert_name.replace("\xa0", " ").replace("\u202f", " ")
-    match = re.search(r"(\d+)", clean_name)
-    area = int(match.group(1)) if match else None
-
-    return {
-        "hash_id": item.get("hash_id"),
-        "advert_name": advert_name,
-        "category_main": (item.get("category_main_cb") or {}).get("value"),
-        "category_sub": (item.get("category_sub_cb") or {}).get("value"),
-        "category_type": (item.get("category_type_cb") or {}).get("value"),
-        "city": loc.get("city"),
-        "district": loc.get("district"),
-        "region_id": loc.get("region_id"),
-        "region_name": loc.get("region"),
-        "gps_lat": loc.get("gps_lat"),
-        "gps_lon": loc.get("gps_lon"),
-        "area_m2": area,
-        "price_czk": price_czk,
-        "price_czk_m2": None,
-        "price_unit_value": (item.get("price_unit_cb") or {}).get("value"),
-    }
-
-
-def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path | str = DEFAULT_DB_PATH) -> None:
+def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path) -> None:
     create_db_if_needed(db_path)
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
@@ -117,12 +111,12 @@ def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path | str = DEFAULT_
         INSERT INTO estates (
             hash_id, advert_name, category_main, category_sub, category_type,
             city, district, region_id, region_name, gps_lat, gps_lon,
-            area_m2, price_czk, price_czk_m2, price_unit_value,
+            area_m2, price_czk, price_czk_m2,
             first_seen, last_seen
         ) VALUES (
             :hash_id, :advert_name, :category_main, :category_sub, :category_type,
             :city, :district, :region_id, :region_name, :gps_lat, :gps_lon,
-            :area_m2, :price_czk, :price_czk_m2, :price_unit_value,
+            :area_m2, :price_czk, :price_czk_m2,
             :first_seen, :last_seen
         )
         ON CONFLICT(hash_id) DO UPDATE SET
@@ -139,7 +133,6 @@ def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path | str = DEFAULT_
             area_m2=excluded.area_m2,
             price_czk=excluded.price_czk,
             price_czk_m2=excluded.price_czk_m2,
-            price_unit_value=excluded.price_unit_value,
             last_seen=excluded.last_seen;
         """, {
             **rec,
@@ -157,7 +150,7 @@ def upsert_items(items: Iterable[Dict[str, Any]], db_path: Path | str = DEFAULT_
     con.close()
 
 
-def get_known_ids(db_path: Path | str = DEFAULT_DB_PATH) -> list[int]:
+def get_known_ids(db_path: Path) -> list[int]:
     create_db_if_needed(db_path)
     con = sqlite3.connect(db_path)
     cur = con.cursor()
@@ -167,7 +160,7 @@ def get_known_ids(db_path: Path | str = DEFAULT_DB_PATH) -> list[int]:
     return ids
 
 
-def ensure_new_ads_table(db_path: Path | str = DEFAULT_DB_PATH):
+def ensure_new_ads_table(db_path: Path):
     """Zajistí existenci tabulky pro nové inzeráty."""
     db_path = Path(db_path)
     con = sqlite3.connect(db_path)
@@ -184,12 +177,14 @@ def ensure_new_ads_table(db_path: Path | str = DEFAULT_DB_PATH):
     con.close()
 
 
-def mark_new_ads(new_items: list[dict], db_path: Path | str = DEFAULT_DB_PATH):
+def mark_new_ads(new_items: list[dict], db_path: Path):
     """Uloží nové inzeráty do new_estates."""
     ensure_new_ads_table(db_path)
     con = sqlite3.connect(db_path)
     cur = con.cursor()
-    now = datetime.now(ZoneInfo("Europe/Prague")).strftime("%Y-%m-%d %H:%M:%S")
+
+    now = _now_iso()
+
     for item in new_items:
         hid = item.get("hash_id")
         if not hid:

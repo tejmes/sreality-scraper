@@ -1,4 +1,4 @@
-category_main_cb = { # Typ nemovitosti
+category_main_cb = {  # Typ nemovitosti
     "Byty": 1,
     "Domy": 2,
     "Pozemky": 3,
@@ -6,14 +6,14 @@ category_main_cb = { # Typ nemovitosti
     "Ostatní": 5
 }
 
-category_type_cb = { # Typ nabídky
+category_type_cb = {  # Typ nabídky
     "Prodej": 1,
     "Pronájem": 2,
     "Dražby": 3,
     "Podíly": 4
 }
 
-category_sub_cb = { # Dispozice - Kategorie
+category_sub_cb = {  # Dispozice - Kategorie
     "1+kk": 2,
     "1+1": 3,
     "2+kk": 4,
@@ -64,7 +64,7 @@ category_sub_cb = { # Dispozice - Kategorie
     "Apartmány": 57
 }
 
-room_count_cb = { # Dispozice - Velikost
+room_count_cb = {  # Dispozice - Velikost
     "1 pokoj": 1,
     "2 pokoje": 2,
     "3 pokoje": 3,
@@ -73,11 +73,11 @@ room_count_cb = { # Dispozice - Velikost
     "Atypický": 6
 }
 
-locality_country_id = { # Stát
+locality_country_id = {  # Stát
     "Česká republika": 112
 }
 
-locality_region_id = { # Lokalita - Kraj
+locality_region_id = {  # Lokalita - Kraj
     "Jihočeský": 1,
     "Plzeňský": 2,
     "Karlovarský": 3,
