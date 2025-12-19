@@ -51,10 +51,10 @@ def admin_users(request: Request):
 
 @router.post("/admin/users/create")
 def admin_create_user(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    admin_flag: Optional[str] = Form(None, alias="is_admin"),
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        admin_flag: Optional[str] = Form(None, alias="is_admin"),
 ):
     try:
         if not is_admin(request):
@@ -89,9 +89,9 @@ def admin_reset_password(request: Request, user_id: int):
 
 @router.post("/admin/users/{user_id}/reset-password")
 async def admin_reset_password_custom(
-    request: Request,
-    user_id: int,
-    new_password: str = Form(...),
+        request: Request,
+        user_id: int,
+        new_password: str = Form(...),
 ):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
@@ -145,9 +145,9 @@ def admin_team_detail(request: Request, team_id: int):
 
 @router.post("/admin/teams/{team_id}/add_user")
 def admin_team_add_user(
-    request: Request,
-    team_id: int,
-    user_id: int = Form(...),
+        request: Request,
+        team_id: int,
+        user_id: int = Form(...),
 ):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
@@ -157,14 +157,16 @@ def admin_team_add_user(
         return HTMLResponse("Tým nenalezen.", status_code=404)
 
     set_team(user_id, team_id)
+    if request.session.get("user_id") == user_id:
+        request.session["team_id"] = team_id
     return RedirectResponse(f"/admin/teams/{team_id}", status_code=303)
 
 
 @router.post("/admin/teams/{team_id}/remove_user")
 def admin_team_remove_user(
-    request: Request,
-    team_id: int,
-    user_id: int = Form(...),
+        request: Request,
+        team_id: int,
+        user_id: int = Form(...),
 ):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
@@ -174,6 +176,8 @@ def admin_team_remove_user(
         return HTMLResponse("Tým nenalezen.", status_code=404)
 
     set_team(user_id, None)
+    if request.session.get("user_id") == user_id:
+        request.session["team_id"] = None
     return RedirectResponse(f"/admin/teams/{team_id}", status_code=303)
 
 
