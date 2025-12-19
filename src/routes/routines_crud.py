@@ -2,6 +2,7 @@ from typing import Optional, List
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
+from datetime import datetime
 
 from src.core.auth import get_current_user_id, _ensure_can_access_routine
 from src.core.utils import _to_int, _to_float, _clean_str
@@ -21,40 +22,40 @@ router = APIRouter()
 
 @router.post("/routines/create")
 def routines_create(
-    request: Request,
-    routine_name: str = Form(...),
-    routine_description: Optional[str] = Form(None),
+        request: Request,
+        routine_name: str = Form(...),
+        routine_description: Optional[str] = Form(None),
 
-    schedule_type: str = Form("manual"),
-    schedule_times: Optional[str] = Form(None),
-    schedule_days: Optional[str] = Form(None),
+        schedule_type: str = Form("manual"),
+        schedule_times: Optional[str] = Form(None),
+        schedule_days: Optional[str] = Form(None),
 
-    emails: Optional[str] = Form(None),
+        emails: Optional[str] = Form(None),
 
-    category_main_cb: str = Form(...),
-    category_type_cb: Optional[List[str]] = Form(None),
-    category_sub_cb: Optional[List[str]] = Form(None),
-    room_count_cb: Optional[List[str]] = Form(None),
+        category_main_cb: str = Form(...),
+        category_type_cb: Optional[List[str]] = Form(None),
+        category_sub_cb: Optional[List[str]] = Form(None),
+        room_count_cb: Optional[List[str]] = Form(None),
 
-    locality_country_id: Optional[str] = Form(None),
-    locality_region_id: Optional[str] = Form(None),
-    locality_district_id: Optional[str] = Form(None),
-    locality_search_name: Optional[str] = Form(None),
-    locality_entity_type: Optional[str] = Form(None),
-    locality_entity_id: Optional[str] = Form(None),
-    locality_radius: Optional[str] = Form(None),
+        locality_country_id: Optional[str] = Form(None),
+        locality_region_id: Optional[str] = Form(None),
+        locality_district_id: Optional[str] = Form(None),
+        locality_search_name: Optional[str] = Form(None),
+        locality_entity_type: Optional[str] = Form(None),
+        locality_entity_id: Optional[str] = Form(None),
+        locality_radius: Optional[str] = Form(None),
 
-    description_search: Optional[str] = Form(None),
+        description_search: Optional[str] = Form(None),
 
-    usable_area_from: Optional[str] = Form(None),
-    usable_area_to: Optional[str] = Form(None),
-    estate_area_from: Optional[str] = Form(None),
-    estate_area_to: Optional[str] = Form(None),
+        usable_area_from: Optional[str] = Form(None),
+        usable_area_to: Optional[str] = Form(None),
+        estate_area_from: Optional[str] = Form(None),
+        estate_area_to: Optional[str] = Form(None),
 
-    price_from: Optional[str] = Form(None),
-    price_to: Optional[str] = Form(None),
-    price_mode: str = Form("total"),
-    advert_age_to: Optional[str] = Form(None),
+        price_from: Optional[str] = Form(None),
+        price_to: Optional[str] = Form(None),
+        price_mode: str = Form("total"),
+        advert_age_to: Optional[str] = Form(None),
 ):
     filters = {
         "category_main_cb": _to_int(category_main_cb),
@@ -150,37 +151,37 @@ def routines_update_emails(routine_id: str, emails: str = Form("")):
 
 @router.post("/routines/{routine_id}/update")
 def routines_update(
-    request: Request,
-    routine_id: str,
-    routine_name: str = Form(...),
-    routine_description: str = Form(""),
-    schedule_times: str = Form(""),
-    emails: str = Form(""),
+        request: Request,
+        routine_id: str,
+        routine_name: str = Form(...),
+        routine_description: str = Form(""),
+        schedule_times: str = Form(""),
+        emails: str = Form(""),
 
-    category_main_cb: str = Form(...),
-    category_type_cb: List[str] = Form([]),
-    category_sub_cb: List[str] = Form([]),
-    room_count_cb: List[str] = Form([]),
+        category_main_cb: str = Form(...),
+        category_type_cb: List[str] = Form([]),
+        category_sub_cb: List[str] = Form([]),
+        room_count_cb: List[str] = Form([]),
 
-    locality_country_id: str = Form(None),
-    locality_region_id: str = Form(None),
-    locality_district_id: Optional[str] = Form(None),
-    locality_search_name: str = Form(None),
-    locality_entity_type: str = Form(None),
-    locality_entity_id: str = Form(None),
-    locality_radius: str = Form(None),
+        locality_country_id: str = Form(None),
+        locality_region_id: str = Form(None),
+        locality_district_id: Optional[str] = Form(None),
+        locality_search_name: str = Form(None),
+        locality_entity_type: str = Form(None),
+        locality_entity_id: str = Form(None),
+        locality_radius: str = Form(None),
 
-    description_search: Optional[str] = Form(None),
+        description_search: Optional[str] = Form(None),
 
-    usable_area_from: str = Form(None),
-    usable_area_to: str = Form(None),
-    estate_area_from: str = Form(None),
-    estate_area_to: str = Form(None),
+        usable_area_from: str = Form(None),
+        usable_area_to: str = Form(None),
+        estate_area_from: str = Form(None),
+        estate_area_to: str = Form(None),
 
-    price_from: str = Form(None),
-    price_to: str = Form(None),
-    price_mode: str = Form("total"),
-    advert_age_to: str = Form(None),
+        price_from: str = Form(None),
+        price_to: str = Form(None),
+        price_mode: str = Form("total"),
+        advert_age_to: str = Form(None),
 ):
     from src.persistence.routines_storage import load_index, save_index
 
@@ -188,6 +189,8 @@ def routines_update(
     routine = next((r for r in doc["routines"] if r["id"] == routine_id), None)
     if not routine:
         return RedirectResponse("/routines", status_code=302)
+
+    old_times = routine.get("schedule", {}).get("times", []) or []
 
     routine["name"] = routine_name
     routine["description"] = routine_description
@@ -227,6 +230,47 @@ def routines_update(
     }
 
     save_index(doc)
+
+    added_times = set(times) - set(old_times)
+
+    for job in scheduler.get_jobs():
+        if job.id.startswith(f"{routine_id}_cron_"):
+            scheduler.remove_job(job.id)
+
+    now = datetime.now()
+
+    for t in added_times:
+        hour, minute = map(int, t.split(":"))
+
+        run_at = now.replace(
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+
+        if run_at > now:
+            scheduler.add_job(
+                run_routine_job,
+                trigger="date",
+                run_date=run_at,
+                args=[routine],
+                id=f"{routine_id}_once_{t}",
+                replace_existing=True,
+            )
+
+    for t in times:
+        hour, minute = map(int, t.split(":"))
+        scheduler.add_job(
+            run_routine_job,
+            trigger="cron",
+            hour=hour,
+            minute=minute,
+            args=[routine],
+            id=f"{routine_id}_cron_{t}",
+            replace_existing=True,
+        )
+
     return RedirectResponse(f"/routines/{routine_id}", status_code=303)
 
 
@@ -245,45 +289,3 @@ def routines_delete(request: Request, routine_id: str):
             scheduler.remove_job(job.id)
 
     return RedirectResponse("/routines", status_code=303)
-
-
-@router.post("/routines/{routine_id}/update_schedule")
-def routines_update_schedule(
-    routine_id: str,
-    schedule_times: Optional[str] = Form(None),
-):
-    from src.persistence.routines_storage import load_index, save_index
-
-    doc = load_index()
-    routine = None
-    for r in doc["routines"]:
-        if r["id"] == routine_id:
-            routine = r
-            times = [t.strip() for t in schedule_times.split(",") if t.strip()] if schedule_times else []
-            r["schedule"] = {"type": "daily", "times": times} if times else None
-            break
-
-    save_index(doc)
-
-    if routine:
-        for job in scheduler.get_jobs():
-            if job.name == routine_id:
-                scheduler.remove_job(job.id)
-
-        sched = routine.get("schedule")
-        if sched:
-            try:
-                for t in sched.get("times", []):
-                    hour, minute = map(int, t.split(":"))
-                    scheduler.add_job(
-                        run_routine_job,
-                        "cron",
-                        hour=hour,
-                        minute=minute,
-                        args=[routine],
-                        name=routine_id,
-                    )
-            except Exception as e:
-                print(f"[SCHED] Chyba při registraci nové rutiny {routine['name']}: {e}")
-
-    return RedirectResponse(f"/routines/{routine_id}", status_code=303)
