@@ -8,7 +8,7 @@ import traceback
 
 from src.persistence.routines_storage import list_routines, delete_routine
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 USERS_DB = DATA_DIR / "users.sqlite3"
 

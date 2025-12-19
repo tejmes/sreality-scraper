@@ -7,7 +7,7 @@ from filelock import FileLock
 
 from src.persistence.users_storage import list_team_members, set_team
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = ROOT / "data" / "teams"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
