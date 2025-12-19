@@ -7,19 +7,19 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from src.core.auth import get_current_user_id, _ensure_can_access_routine
 from src.core.templates import render
 from src.services.search_service import search_multiple_keywords
-from src.routines_storage import (
+from src.persistence.routines_storage import (
     get_routine,
     routine_db_path,
     update_routine_last_run,
 )
-from src.storage import (
+from src.persistence.storage import (
     create_db_if_needed,
     get_known_ids,
     upsert_items,
     ensure_new_ads_table,
     mark_new_ads,
 )
-from src.sreality_client import to_card
+from src.infrastructure.sreality_client import to_card
 
 router = APIRouter()
 

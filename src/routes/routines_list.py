@@ -7,11 +7,11 @@ from src.core.auth import (
     _ensure_can_access_routine,
 )
 from src.core.templates import render
-from src.routines_storage import (
+from src.persistence.routines_storage import (
     list_routines,
     get_routine,
 )
-from src.users_storage import list_users
+from src.persistence.users_storage import list_users
 
 router = APIRouter()
 

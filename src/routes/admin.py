@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.core.auth import is_admin, get_current_user, get_current_user_id
 from src.core.templates import render
-from src.users_storage import (
+from src.persistence.users_storage import (
     create_user,
     list_users,
     delete_user,
@@ -15,13 +15,13 @@ from src.users_storage import (
     list_team_members,
     get_user_by_id,
 )
-from src.teams_storage import (
+from src.persistence.teams_storage import (
     list_teams,
     get_team,
     create_team,
     delete_team,
 )
-from src.routines_storage import list_routines
+from src.persistence.routines_storage import list_routines
 
 router = APIRouter()
 

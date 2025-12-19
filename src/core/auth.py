@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 
-from src.users_storage import get_user_by_id
+from src.persistence.users_storage import get_user_by_id
 
 
 def is_admin(request: Request) -> bool:

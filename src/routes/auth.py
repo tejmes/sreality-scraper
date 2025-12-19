@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.core.auth import is_admin, get_current_user, get_current_user_id
 from src.core.templates import render
-from src.users_storage import (
+from src.persistence.users_storage import (
     verify_user_password,
     get_user_by_username,
     reset_password,

@@ -2,7 +2,7 @@ import json
 
 from src.scheduler.scheduler import scheduler
 from src.scheduler.jobs import run_routine_job
-from src.routines_storage import list_routines
+from src.persistence.routines_storage import list_routines
 
 
 def schedule_existing_routines():

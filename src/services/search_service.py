@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.sreality_client import (
+from src.infrastructure.sreality_client import (
     build_query,
     fetch_page,
     fetch_all_pages,

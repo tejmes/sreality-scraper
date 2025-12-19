@@ -7,7 +7,7 @@ import time
 import re
 import unicodedata
 
-from src.headers import build_browser_like_headers
+from src.infrastructure.headers import build_browser_like_headers
 
 BASE_SEARCH = "https://www.sreality.cz/api/v1/estates/search"
 

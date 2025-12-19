@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from passlib.hash import bcrypt
 import traceback
 
-from src.routines_storage import list_routines, delete_routine
+from src.persistence.routines_storage import list_routines, delete_routine
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -5,15 +5,14 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 
 from src.core.auth import get_current_user_id, _ensure_can_access_routine
 from src.core.utils import _to_int, _to_float, _clean_str
-from src.routines_storage import (
+from src.persistence.routines_storage import (
     create_routine,
     get_routine,
     delete_routine,
     update_routine_name,
-    update_routine_last_run,
     routine_db_path,
 )
-from src.storage import create_db_if_needed
+from src.persistence.storage import create_db_if_needed
 from src.scheduler.scheduler import scheduler
 from src.scheduler.jobs import run_routine_job
 
@@ -129,7 +128,7 @@ def routines_update_name(routine_id: str, new_name: str = Form(...)):
 
 @router.post("/routines/{routine_id}/update_description")
 def routines_update_description(routine_id: str, new_description: str = Form(...)):
-    from src.routines_storage import update_routine_description
+    from src.persistence.routines_storage import update_routine_description
     if not update_routine_description(routine_id, new_description):
         return HTMLResponse("Rutina nenalezena.", status_code=404)
     return RedirectResponse(f"/routines/{routine_id}", status_code=303)
@@ -137,7 +136,7 @@ def routines_update_description(routine_id: str, new_description: str = Form(...
 
 @router.post("/routines/{routine_id}/update_emails")
 def routines_update_emails(routine_id: str, emails: str = Form("")):
-    from src.routines_storage import load_index, save_index
+    from src.persistence.routines_storage import load_index, save_index
 
     doc = load_index()
     for r in doc["routines"]:
@@ -183,7 +182,7 @@ def routines_update(
     price_mode: str = Form("total"),
     advert_age_to: str = Form(None),
 ):
-    from src.routines_storage import load_index, save_index
+    from src.persistence.routines_storage import load_index, save_index
 
     doc = load_index()
     routine = next((r for r in doc["routines"] if r["id"] == routine_id), None)
@@ -253,7 +252,7 @@ def routines_update_schedule(
     routine_id: str,
     schedule_times: Optional[str] = Form(None),
 ):
-    from src.routines_storage import load_index, save_index, get_routine
+    from src.persistence.routines_storage import load_index, save_index
 
     doc = load_index()
     routine = None

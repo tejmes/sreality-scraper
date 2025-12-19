@@ -18,7 +18,7 @@ from src.routes.routines_list import router as routines_list_router
 from src.routes.routines_run import router as routines_run_router
 from src.routes.search import router as search_router
 from src.scheduler.startup import schedule_existing_routines
-from src.users_storage import (
+from src.persistence.users_storage import (
     init_users_db,
     ensure_admin,
 )

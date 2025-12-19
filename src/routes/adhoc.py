@@ -7,8 +7,8 @@ from src.core.auth import get_current_user_id
 from src.core.templates import render
 from src.core.utils import _to_int, _to_float, _clean_str
 from src.services.search_service import search_multiple_keywords
-from src.sreality_client import to_card
-from src.storage import upsert_items, get_known_ids
+from src.infrastructure.sreality_client import to_card
+from src.persistence.storage import upsert_items, get_known_ids
 
 router = APIRouter()
 

@@ -1,16 +1,15 @@
 import os
 
 from src.services.search_service import search_multiple_keywords
-from src.storage import (
+from src.persistence.storage import (
     upsert_items,
     get_known_ids,
     create_db_if_needed,
-    ensure_new_ads_table,
     mark_new_ads,
 )
-from src.routines_storage import routine_db_path, update_routine_last_run
-from src.email_utils import send_email
-from src.email_builder import build_new_ads_email
+from src.persistence.routines_storage import routine_db_path, update_routine_last_run
+from src.infrastructure.email_utils import send_email
+from src.services.email_builder import build_new_ads_email
 
 
 def run_routine_job(routine):

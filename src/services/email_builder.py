@@ -1,4 +1,4 @@
-from src.sreality_client import to_card
+from src.infrastructure.sreality_client import to_card
 
 
 def build_new_ads_email(routine: dict, new_items: list[dict]) -> str:
