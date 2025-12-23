@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from src.core.auth import get_current_user_id, _ensure_can_access_routine
+from src.core.auth import get_current_user_id, ensure_can_access_routine
 from src.core.templates import render
 from src.services.search_service import search_multiple_keywords
 from src.persistence.routines_storage import (
@@ -26,16 +26,16 @@ router = APIRouter()
 
 @router.post("/routines/{routine_id}/run", response_class=HTMLResponse)
 def routines_run(
-    request: Request,
-    routine_id: str,
-    only_new: Optional[str] = Form(None),
+        request: Request,
+        routine_id: str,
+        only_new: Optional[str] = Form(None),
 ):
     uid = get_current_user_id(request)
     if not uid:
         return RedirectResponse("/login", status_code=303)
 
     routine = get_routine(routine_id)
-    deny = _ensure_can_access_routine(request, routine)
+    deny = ensure_can_access_routine(request, routine)
     if deny:
         return deny
 
@@ -143,7 +143,7 @@ def routines_new(request: Request, routine_id: str):
         return RedirectResponse("/login", status_code=303)
 
     routine = get_routine(routine_id)
-    deny = _ensure_can_access_routine(request, routine)
+    deny = ensure_can_access_routine(request, routine)
     if deny:
         return deny
 

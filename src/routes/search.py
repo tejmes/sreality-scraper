@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.core.auth import is_admin, get_current_user_id
 from src.core.templates import render
-from src.core.utils import _to_int, _to_float, _clean_str
+from src.core.utils import to_int, to_float, clean_str
 from src.services.search_service import search_multiple_keywords
 from src.infrastructure.sreality_client import to_card, save_json
 
@@ -60,28 +60,28 @@ def search(
     limit: str = Form("60"),
     offset: str = Form("0"),
 ):
-    cm = _to_int(category_main_cb)
+    cm = to_int(category_main_cb)
 
     ct = [int(x) for x in category_type_cb] if category_type_cb else []
-    subs = [_to_int(s) for s in category_sub_cb or [] if _to_int(s) is not None]
-    rooms = [_to_int(r) for r in room_count_cb or [] if _to_int(r) is not None]
+    subs = [to_int(s) for s in category_sub_cb or [] if to_int(s) is not None]
+    rooms = [to_int(r) for r in room_count_cb or [] if to_int(r) is not None]
 
-    country = _to_int(locality_country_id) or 112
-    reg = _to_int(locality_region_id)
-    dist = _to_int(locality_district_id)
-    radius = _to_float(locality_radius)
+    country = to_int(locality_country_id) or 112
+    reg = to_int(locality_region_id)
+    dist = to_int(locality_district_id)
+    radius = to_float(locality_radius)
 
-    ua_from = _to_int(usable_area_from)
-    ua_to = _to_int(usable_area_to)
-    ea_from = _to_int(estate_area_from)
-    ea_to = _to_int(estate_area_to)
+    ua_from = to_int(usable_area_from)
+    ua_to = to_int(usable_area_to)
+    ea_from = to_int(estate_area_from)
+    ea_to = to_int(estate_area_to)
 
-    p_from = _to_int(price_from)
-    p_to = _to_int(price_to)
-    adv_age = _to_int(advert_age_to)
+    p_from = to_int(price_from)
+    p_to = to_int(price_to)
+    adv_age = to_int(advert_age_to)
 
-    lim = _to_int(limit) or 60
-    off = _to_int(offset) or 0
+    lim = to_int(limit) or 60
+    off = to_int(offset) or 0
 
     use_price_m2 = (price_mode == "per_m2")
 
@@ -93,9 +93,9 @@ def search(
         locality_country_id=country,
         locality_region_id=reg,
         locality_district_id=dist,
-        locality_search_name=_clean_str(locality_search_name),
-        locality_entity_type=_clean_str(locality_entity_type),
-        locality_entity_id=_to_int(locality_entity_id),
+        locality_search_name=clean_str(locality_search_name),
+        locality_entity_type=clean_str(locality_entity_type),
+        locality_entity_id=to_int(locality_entity_id),
         locality_radius=radius,
         usable_area_from=ua_from,
         usable_area_to=ua_to,

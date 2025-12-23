@@ -21,9 +21,9 @@ def login_form(request: Request):
 
 @router.post("/login", response_class=HTMLResponse)
 def login_submit(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
 ):
     user = verify_user_password(username, password)
     if not user:
@@ -35,7 +35,6 @@ def login_submit(
     request.session["is_admin"] = bool(user["is_admin"])
     request.session["team_id"] = user.get("team_id")
 
-    # redirect podle role
     if user["is_admin"]:
         return RedirectResponse("/admin", status_code=303)
     else:
@@ -59,10 +58,10 @@ def user_reset_password_form(request: Request):
 
 @router.post("/user/reset_password", response_class=HTMLResponse)
 def user_reset_password_submit(
-    request: Request,
-    old_password: str = Form(...),
-    new_password: str = Form(...),
-    confirm_password: str = Form(...),
+        request: Request,
+        old_password: str = Form(...),
+        new_password: str = Form(...),
+        confirm_password: str = Form(...),
 ):
     uid = get_current_user_id(request)
     if not uid:
@@ -72,7 +71,6 @@ def user_reset_password_submit(
     if not user:
         return HTMLResponse("Uživatel nenalezen.", status_code=404)
 
-    # 1️⃣ Ověření starého hesla
     if not verify_user_password(user["username"], old_password):
         return render(
             request,
@@ -80,7 +78,6 @@ def user_reset_password_submit(
             {"error": "Původní heslo je nesprávné."},
         )
 
-    # 2️⃣ Ověření nového hesla
     if new_password != confirm_password:
         return render(
             request,
@@ -88,10 +85,9 @@ def user_reset_password_submit(
             {"error": "Nová hesla se neshodují."},
         )
 
-    # 3️⃣ Změna v DB
     reset_password(uid, new_password)
     return render(
         request,
         "user_reset_password.html",
-        {"error": "✅ Heslo bylo úspěšně změněno."},
+        {"error": "Heslo bylo úspěšně změněno."},
     )

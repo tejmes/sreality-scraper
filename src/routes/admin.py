@@ -26,20 +26,12 @@ from src.persistence.routines_storage import list_routines
 router = APIRouter()
 
 
-# ==========================
-# ADMIN DASHBOARD
-# ==========================
-
 @router.get("/admin", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     if not is_admin(request):
         return RedirectResponse("/login", status_code=303)
     return render(request, "admin.html", {"username": get_current_user(request)})
 
-
-# ==========================
-# ADMIN – UŽIVATELÉ
-# ==========================
 
 @router.get("/admin/users", response_class=HTMLResponse)
 def admin_users(request: Request):
@@ -98,10 +90,6 @@ async def admin_reset_password_custom(
     reset_password(user_id, new_password)
     return RedirectResponse("/admin/users", status_code=303)
 
-
-# ==========================
-# ADMIN – TÝMY
-# ==========================
 
 @router.get("/admin/teams", response_class=HTMLResponse)
 def admin_teams(request: Request):
@@ -189,10 +177,6 @@ def admin_team_delete(request: Request, team_id: int):
     delete_team(team_id)
     return RedirectResponse("/admin/teams", status_code=303)
 
-
-# ==========================
-# TEAM PAGE
-# ==========================
 
 @router.get("/team", response_class=HTMLResponse)
 def team_page(request: Request):

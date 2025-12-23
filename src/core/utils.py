@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-def _to_int(s: Optional[str]) -> Optional[int]:
+def to_int(s: Optional[str]) -> Optional[int]:
     if not s:
         return None
     try:
@@ -10,7 +10,7 @@ def _to_int(s: Optional[str]) -> Optional[int]:
         return None
 
 
-def _to_float(s: Optional[str]) -> Optional[float]:
+def to_float(s: Optional[str]) -> Optional[float]:
     if not s:
         return None
     try:
@@ -19,14 +19,14 @@ def _to_float(s: Optional[str]) -> Optional[float]:
         return None
 
 
-def _clean_str(v: Optional[str]) -> Optional[str]:
+def clean_str(v: Optional[str]) -> Optional[str]:
     if v is None:
         return None
     v = v.strip()
     return v if v else None
 
 
-def _split_keywords(description_search: Optional[str]) -> list[str]:
+def split_keywords(description_search: Optional[str]) -> list[str]:
     if not description_search:
         return []
     return [w.strip() for w in description_search.replace(";", ",").split(",") if w.strip()]

@@ -566,75 +566,75 @@
 
     // ===================== ČASY – TAGY =====================
 
-const timeInput = document.getElementById("time-input");
-const timeHidden = document.getElementById("schedule_times");
-const timeContainer = document.getElementById("time-tags");
+    const timeInput = document.getElementById("time-input");
+    const timeHidden = document.getElementById("schedule_times");
+    const timeContainer = document.getElementById("time-tags");
 
-let timeList = [];
+    let timeList = [];
 
-// render tagů
-function renderTimeTags() {
-    timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
+    // render tagů
+    function renderTimeTags() {
+        timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
 
-    timeList.forEach(t => {
-        const el = document.createElement("div");
-        el.className = "tag";
-        el.innerHTML = `${t}<span data-time="${t}">&times;</span>`;
-        timeContainer.insertBefore(el, timeInput);
+        timeList.forEach(t => {
+            const el = document.createElement("div");
+            el.className = "tag";
+            el.innerHTML = `${t}<span data-time="${t}">&times;</span>`;
+            timeContainer.insertBefore(el, timeInput);
+        });
+
+        timeHidden.value = timeList.join(",");
+    }
+
+    // Enter -> přidání času
+    timeInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            let value = timeInput.value.trim();
+
+            if (!value) return;
+
+            // validace času HH:MM
+            const match = /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+            if (!match) {
+                timeInput.style.border = "1px solid red";
+                setTimeout(() => timeInput.style.border = "", 800);
+                return;
+            }
+
+            if (!timeList.includes(value)) {
+                timeList.push(value);
+                renderTimeTags();
+            }
+
+            timeInput.value = "";
+        }
     });
 
-    timeHidden.value = timeList.join(",");
-}
-
-// Enter -> přidání času
-timeInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        let value = timeInput.value.trim();
-
-        if (!value) return;
-
-        // validace času HH:MM
-        const match = /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
-        if (!match) {
-            timeInput.style.border = "1px solid red";
-            setTimeout(() => timeInput.style.border = "", 800);
-            return;
-        }
-
-        if (!timeList.includes(value)) {
-            timeList.push(value);
+    // mazání tagu (klik na ×)
+    timeContainer.addEventListener("click", (e) => {
+        if (e.target.tagName === "SPAN") {
+            const val = e.target.getAttribute("data-time");
+            timeList = timeList.filter(t => t !== val);
             renderTimeTags();
         }
+    });
 
+    // reset formuláře
+    document.getElementById("reset-filters").addEventListener("click", () => {
+        timeList = [];
+        renderTimeTags();
         timeInput.value = "";
-    }
-});
+    });
 
-// mazání tagu (klik na ×)
-timeContainer.addEventListener("click", (e) => {
-    if (e.target.tagName === "SPAN") {
-        const val = e.target.getAttribute("data-time");
-        timeList = timeList.filter(t => t !== val);
-        renderTimeTags();
-    }
-});
-
-// reset formuláře
-document.getElementById("reset-filters").addEventListener("click", () => {
-    timeList = [];
-    renderTimeTags();
-    timeInput.value = "";
-});
-
-// pokud budeš mít předvyplněno při úpravě rutiny:
-window.addEventListener("load", () => {
-    const existing = timeHidden.value.split(",").map(x => x.trim()).filter(Boolean);
-    if (existing.length) {
-        timeList = existing;
-        renderTimeTags();
-    }
-});
+    // pokud budeš mít předvyplněno při úpravě rutiny:
+    window.addEventListener("load", () => {
+        const existing = timeHidden.value.split(",").map(x => x.trim()).filter(Boolean);
+        if (existing.length) {
+            timeList = existing;
+            renderTimeTags();
+        }
+    });
 
 </script>
 </body>

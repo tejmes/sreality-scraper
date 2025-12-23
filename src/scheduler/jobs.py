@@ -25,13 +25,9 @@ def run_routine_job(routine):
         fetch_all=True,
     )
 
-    # 🟢 Nejprve zjistíme známé ID
     known_ids = set(get_known_ids(dbp))
-
-    # 🟢 Uložíme všechny inzeráty (včetně aktualizací)
     upsert_items(all_items, dbp)
 
-    # 🟢 Zjistíme které jsou nové a uložíme do new_estates
     new_items = [
         x for x in all_items
         if x.get("hash_id") and x["hash_id"] not in known_ids

@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from src.core.auth import (
     is_admin,
     get_current_user_id,
-    _ensure_can_access_routine,
+    ensure_can_access_routine,
 )
 from src.core.templates import render
 from src.persistence.routines_storage import (
@@ -47,7 +47,7 @@ def routines_detail(request: Request, routine_id: str):
         return RedirectResponse("/login", status_code=303)
 
     routine = get_routine(routine_id)
-    deny = _ensure_can_access_routine(request, routine)
+    deny = ensure_can_access_routine(request, routine)
     if deny:
         return deny
 

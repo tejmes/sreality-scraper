@@ -10,7 +10,6 @@ from src.core.config import (
     ROOT,
 )
 from src.routes.status import router as status_router
-from src.routes.adhoc import router as adhoc_router
 from src.routes.admin import router as admin_router
 from src.routes.auth import router as auth_router
 from src.routes.autocomplete import router as autocomplete_router
@@ -39,7 +38,6 @@ app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.include_router(status_router)
-app.include_router(adhoc_router)
 app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(autocomplete_router)

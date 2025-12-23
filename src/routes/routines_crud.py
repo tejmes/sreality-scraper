@@ -4,8 +4,8 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from datetime import datetime
 
-from src.core.auth import get_current_user_id, _ensure_can_access_routine
-from src.core.utils import _to_int, _to_float, _clean_str
+from src.core.auth import get_current_user_id, ensure_can_access_routine
+from src.core.utils import to_int, to_float, clean_str
 from src.persistence.routines_storage import (
     create_routine,
     get_routine,
@@ -58,27 +58,27 @@ def routines_create(
         advert_age_to: Optional[str] = Form(None),
 ):
     filters = {
-        "category_main_cb": _to_int(category_main_cb),
+        "category_main_cb": to_int(category_main_cb),
         "category_type_cb": [int(x) for x in (category_type_cb or [])],
-        "category_sub_cb": [_to_int(s) for s in (category_sub_cb or []) if _to_int(s) is not None],
-        "room_count_cb": [_to_int(r) for r in (room_count_cb or []) if _to_int(r) is not None],
-        "locality_country_id": _to_int(locality_country_id) or 112,
-        "locality_region_id": _to_int(locality_region_id),
-        "locality_district_id": _to_int(locality_district_id),
-        "locality_search_name": _clean_str(locality_search_name),
-        "locality_entity_type": _clean_str(locality_entity_type),
-        "locality_entity_id": _to_int(locality_entity_id),
-        "locality_radius": _to_float(locality_radius),
-        "description_search": _clean_str(description_search),
-        "usable_area_from": _to_int(usable_area_from),
-        "usable_area_to": _to_int(usable_area_to),
-        "estate_area_from": _to_int(estate_area_from),
-        "estate_area_to": _to_int(estate_area_to),
-        "price_from": _to_int(price_from) if price_mode != "per_m2" else None,
-        "price_to": _to_int(price_to) if price_mode != "per_m2" else None,
-        "price_m2_from": _to_int(price_from) if price_mode == "per_m2" else None,
-        "price_m2_to": _to_int(price_to) if price_mode == "per_m2" else None,
-        "advert_age_to": _to_int(advert_age_to),
+        "category_sub_cb": [to_int(s) for s in (category_sub_cb or []) if to_int(s) is not None],
+        "room_count_cb": [to_int(r) for r in (room_count_cb or []) if to_int(r) is not None],
+        "locality_country_id": to_int(locality_country_id) or 112,
+        "locality_region_id": to_int(locality_region_id),
+        "locality_district_id": to_int(locality_district_id),
+        "locality_search_name": clean_str(locality_search_name),
+        "locality_entity_type": clean_str(locality_entity_type),
+        "locality_entity_id": to_int(locality_entity_id),
+        "locality_radius": to_float(locality_radius),
+        "description_search": clean_str(description_search),
+        "usable_area_from": to_int(usable_area_from),
+        "usable_area_to": to_int(usable_area_to),
+        "estate_area_from": to_int(estate_area_from),
+        "estate_area_to": to_int(estate_area_to),
+        "price_from": to_int(price_from) if price_mode != "per_m2" else None,
+        "price_to": to_int(price_to) if price_mode != "per_m2" else None,
+        "price_m2_from": to_int(price_from) if price_mode == "per_m2" else None,
+        "price_m2_to": to_int(price_to) if price_mode == "per_m2" else None,
+        "advert_age_to": to_int(advert_age_to),
         "price_mode": price_mode,
         "limit": 60,
         "offset": 0,
@@ -218,7 +218,7 @@ def routines_update(
         "locality_entity_type": entity_type,
         "locality_entity_id": entity_id,
         "locality_radius": float(locality_radius) if locality_radius else None,
-        "description_search": _clean_str(description_search),
+        "description_search": clean_str(description_search),
         "usable_area_from": int(usable_area_from) if usable_area_from else None,
         "usable_area_to": int(usable_area_to) if usable_area_to else None,
         "estate_area_from": int(estate_area_from) if estate_area_from else None,
@@ -277,7 +277,7 @@ def routines_update(
 @router.post("/routines/{routine_id}/delete")
 def routines_delete(request: Request, routine_id: str):
     routine = get_routine(routine_id)
-    deny = _ensure_can_access_routine(request, routine)
+    deny = ensure_can_access_routine(request, routine)
     if deny:
         return deny
 

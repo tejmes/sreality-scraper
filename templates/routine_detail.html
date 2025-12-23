@@ -414,61 +414,61 @@
 
     /* ===================== ČASY ===================== */
 
-const timeInput = document.getElementById("time-input");
-const timeHidden = document.getElementById("schedule_times");
-const timeContainer = document.getElementById("time-tags");
-let timeList = [];
+    const timeInput = document.getElementById("time-input");
+    const timeHidden = document.getElementById("schedule_times");
+    const timeContainer = document.getElementById("time-tags");
+    let timeList = [];
 
-function renderTimeTags() {
-    timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
-    timeList.forEach(t => {
-        const el = document.createElement("div");
-        el.className = "tag";
-        el.innerHTML = `${t}<span data-value="${t}">&times;</span>`;
-        timeContainer.insertBefore(el, timeInput);
-    });
-    timeHidden.value = timeList.join(",");
-}
+    function renderTimeTags() {
+        timeContainer.querySelectorAll(".tag").forEach(t => t.remove());
+        timeList.forEach(t => {
+            const el = document.createElement("div");
+            el.className = "tag";
+            el.innerHTML = `${t}<span data-value="${t}">&times;</span>`;
+            timeContainer.insertBefore(el, timeInput);
+        });
+        timeHidden.value = timeList.join(",");
+    }
 
-timeInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        const value = timeInput.value.trim();
-        if (!value) return;
+    timeInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const value = timeInput.value.trim();
+            if (!value) return;
 
-        if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) {
-            timeInput.style.border = "1px solid red";
-            setTimeout(() => (timeInput.style.border = ""), 800);
-            return;
+            if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) {
+                timeInput.style.border = "1px solid red";
+                setTimeout(() => (timeInput.style.border = ""), 800);
+                return;
+            }
+            if (!timeList.includes(value)) {
+                timeList.push(value);
+                renderTimeTags();
+            }
+            timeInput.value = "";
         }
-        if (!timeList.includes(value)) {
-            timeList.push(value);
+    });
+
+    timeContainer.addEventListener("click", (e) => {
+        if (e.target.tagName === "SPAN") {
+            const val = e.target.getAttribute("data-value");
+            timeList = timeList.filter(t => t !== val);
             renderTimeTags();
         }
-        timeInput.value = "";
-    }
-});
-
-timeContainer.addEventListener("click", (e) => {
-    if (e.target.tagName === "SPAN") {
-        const val = e.target.getAttribute("data-value");
-        timeList = timeList.filter(t => t !== val);
-        renderTimeTags();
-    }
-});
-
-// PŘEDVYPLNĚNÍ
-window.addEventListener("load", () => {
-    const raw = timeHidden.value.trim();
-    if (!raw) return;
-
-    raw.split(",").forEach(t => {
-        const v = t.trim();
-        if (v) timeList.push(v);
     });
 
-    renderTimeTags();
-});
+    // PŘEDVYPLNĚNÍ
+    window.addEventListener("load", () => {
+        const raw = timeHidden.value.trim();
+        if (!raw) return;
+
+        raw.split(",").forEach(t => {
+            const v = t.trim();
+            if (v) timeList.push(v);
+        });
+
+        renderTimeTags();
+    });
 
 
     /* ===================== DISPOZICE ===================== */
@@ -551,71 +551,71 @@ window.addEventListener("load", () => {
     document.getElementById("category_main_cb").addEventListener("change", renderDispozice);
     window.addEventListener("load", renderDispozice);
 
-// PŘEDVYPLNĚNÍ EMAILŮ PO NAČTENÍ
-window.addEventListener("load", () => {
-    const hidden = document.getElementById("emails");
-    const input = document.getElementById("email-input");
-    const c = document.getElementById("email-tags");
+    // PŘEDVYPLNĚNÍ EMAILŮ PO NAČTENÍ
+    window.addEventListener("load", () => {
+        const hidden = document.getElementById("emails");
+        const input = document.getElementById("email-input");
+        const c = document.getElementById("email-tags");
 
-    if (hidden.value.trim() !== "") {
-        hidden.value.split(",").map(x => x.trim()).forEach(v => {
+        if (hidden.value.trim() !== "") {
+            hidden.value.split(",").map(x => x.trim()).forEach(v => {
+                const tag = document.createElement("div");
+                tag.className = "tag";
+                tag.innerHTML = `${v}<span data-value="${v}">&times;</span>`;
+                c.insertBefore(tag, input);
+            });
+        }
+    });
+
+    // Mazání e-mailových tagů
+    document.getElementById("email-tags").addEventListener("click", (e) => {
+        if (e.target.tagName === "SPAN") {
+            const val = e.target.getAttribute("data-value");
+
+            // smažeme tag
+            e.target.parentElement.remove();
+
+            // aktualizujeme hidden input
+            const hidden = document.getElementById("emails");
+            const remaining = Array.from(
+                document.querySelectorAll("#email-tags .tag")
+            ).map(t => t.textContent.replace("×", "").trim());
+
+            hidden.value = remaining.join(",");
+        }
+    });
+
+    // Přidání e-mailu ENTEREM
+    document.getElementById("email-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const value = e.target.value.trim();
+            if (!value) return;
+
+            const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            if (!valid) {
+                e.target.style.border = "1px solid red";
+                setTimeout(() => (e.target.style.border = ""), 800);
+                return;
+            }
+
+            const hidden = document.getElementById("emails");
+
+            const container = document.getElementById("email-tags");
             const tag = document.createElement("div");
             tag.className = "tag";
-            tag.innerHTML = `${v}<span data-value="${v}">&times;</span>`;
-            c.insertBefore(tag, input);
-        });
-    }
-});
+            tag.innerHTML = `${value}<span data-value="${value}">&times;</span>`;
+            container.insertBefore(tag, e.target);
 
-// Mazání e-mailových tagů
-document.getElementById("email-tags").addEventListener("click", (e) => {
-    if (e.target.tagName === "SPAN") {
-        const val = e.target.getAttribute("data-value");
+            const current = hidden.value ? hidden.value.split(",") : [];
+            if (!current.includes(value)) {
+                current.push(value);
+            }
+            hidden.value = current.join(",");
 
-        // smažeme tag
-        e.target.parentElement.remove();
-
-        // aktualizujeme hidden input
-        const hidden = document.getElementById("emails");
-        const remaining = Array.from(
-            document.querySelectorAll("#email-tags .tag")
-        ).map(t => t.textContent.replace("×", "").trim());
-
-        hidden.value = remaining.join(",");
-    }
-});
-
-// Přidání e-mailu ENTEREM
-document.getElementById("email-input").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        const value = e.target.value.trim();
-        if (!value) return;
-
-        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        if (!valid) {
-            e.target.style.border = "1px solid red";
-            setTimeout(() => (e.target.style.border = ""), 800);
-            return;
+            e.target.value = "";
         }
-
-        const hidden = document.getElementById("emails");
-
-        const container = document.getElementById("email-tags");
-        const tag = document.createElement("div");
-        tag.className = "tag";
-        tag.innerHTML = `${value}<span data-value="${value}">&times;</span>`;
-        container.insertBefore(tag, e.target);
-
-        const current = hidden.value ? hidden.value.split(",") : [];
-        if (!current.includes(value)) {
-            current.push(value);
-        }
-        hidden.value = current.join(",");
-
-        e.target.value = "";
-    }
-});
+    });
 
 
     /* ===== AUTOCOMPLETE ADRESA ===== */
@@ -676,13 +676,13 @@ document.getElementById("email-input").addEventListener("keydown", (e) => {
         hiddenInput.value = keywords.join(",");
     }
 
-// PŘEDVYPLNĚNÍ SMART SEARCH TAGŮ
-window.addEventListener("load", () => {
-    if (hiddenInput.value.trim() !== "") {
-        keywords = hiddenInput.value.split(",").map(x => x.trim());
-        renderTags();
-    }
-});
+    // PŘEDVYPLNĚNÍ SMART SEARCH TAGŮ
+    window.addEventListener("load", () => {
+        if (hiddenInput.value.trim() !== "") {
+            keywords = hiddenInput.value.split(",").map(x => x.trim());
+            renderTags();
+        }
+    });
 
     smartInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -742,16 +742,16 @@ window.addEventListener("load", () => {
     window.addEventListener("load", updateAreaVisibility);
 
     document.getElementById("run-form").addEventListener("submit", function () {
-    const modal = document.getElementById("loading-modal");
-    modal.style.display = "flex";   // zobrazí modal
+        const modal = document.getElementById("loading-modal");
+        modal.style.display = "flex";   // zobrazí modal
 
-    // zabrání scrollování stránky, aby to bylo čisté
-    document.body.style.overflow = "hidden";
-});
+        // zabrání scrollování stránky, aby to bylo čisté
+        document.body.style.overflow = "hidden";
+    });
 
     input.addEventListener("input", () => {
-    // jakmile začne psát adresu → reset kraje
-    document.getElementById("locality_region_id").value = "";
+        // jakmile začne psát adresu → reset kraje
+        document.getElementById("locality_region_id").value = "";
     });
 
     li.addEventListener("click", () => {
