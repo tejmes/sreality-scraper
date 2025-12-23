@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -23,26 +24,26 @@ from src.persistence.users_storage import (
     ensure_admin,
 )
 
-# --- FastAPI a šablony ---
-app = FastAPI(title="Sreality Scraper – hledání a rutina")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_users_db()
+    ensure_admin(ADMIN_USERNAME, ADMIN_PASSWORD)
+    schedule_existing_routines()
+
+    yield
+
+
+app = FastAPI(title="Sreality Scraper", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.include_router(status_router)
-app.include_router(autocomplete_router)
-app.include_router(auth_router)
-app.include_router(search_router)
-app.include_router(routines_list_router)
-app.include_router(routines_crud_router)
-app.include_router(routines_run_router)
-app.include_router(admin_router)
 app.include_router(adhoc_router)
-
-
-@app.on_event("startup")
-def startup_all():
-    # inicializace uživatelů
-    init_users_db()
-    ensure_admin(ADMIN_USERNAME, ADMIN_PASSWORD)
-
-    schedule_existing_routines()
+app.include_router(admin_router)
+app.include_router(auth_router)
+app.include_router(autocomplete_router)
+app.include_router(routines_crud_router)
+app.include_router(routines_list_router)
+app.include_router(routines_run_router)
+app.include_router(search_router)
