@@ -191,7 +191,7 @@ def to_card(item: dict[str, Any]) -> dict[str, Any]:
         25: "kancelare",
         26: "sklady",
         27: "vyroba",
-        28: "obchodni-prostory",
+        28: "obchodni-prostor",
         29: "ubytovani",
         30: "restaurace",
         31: "zemedelsky",
